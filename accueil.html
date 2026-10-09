@@ -1,0 +1,116 @@
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon espace privé</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        header h1 { margin: 0; font-size: 23px; }
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #logout { background: #ef4444; color: white; }
+        main { max-width: 1000px; margin: 35px auto; padding: 0 18px; }
+        .welcome, .card {
+            background: white;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px #0f172a0d;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+        }
+        .card h2 { margin-top: 0; }
+        .icon { font-size: 30px; }
+        .muted { color: #64748b; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔐 Mon espace privé</h1>
+        <button id="logout">Se déconnecter</button>
+    </header>
+
+    <main>
+        <section class="welcome">
+            <h2>Bienvenue, <span id="username">...</span> !</h2>
+            <p class="muted">Tu es connecté à ton espace privé.</p>
+            <p>Rôle : <strong id="role">...</strong></p>
+        </section>
+
+        <div class="cards">
+            <section class="card">
+                <div class="icon">📁</div>
+                <h2>Documents</h2>
+                <p class="muted">Tes fichiers privés seront disponibles ici.</p>
+            </section>
+            <section class="card" id="usersCard" hidden>
+                <div class="icon">👥</div>
+                <h2>Utilisateurs</h2>
+                <p class="muted">La gestion des comptes sera ajoutée ensuite.</p>
+            </section>
+            <section class="card" id="historyCard" hidden>
+                <div class="icon">📋</div>
+                <h2>Historique</h2>
+                <p class="muted">L'historique des actions sera ajouté ensuite.</p>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const accessToken = sessionStorage.getItem("access_token");
+        const userText = sessionStorage.getItem("user");
+
+        if (!accessToken || !userText) {
+            window.location.replace("index.html");
+        } else {
+            try {
+                const user = JSON.parse(userText);
+                document.getElementById("username").textContent = user.username;
+                document.getElementById("role").textContent =
+                    user.role === "admin" ? "Administrateur" : "Utilisateur";
+
+                if (user.role === "admin") {
+                    document.getElementById("usersCard").hidden = false;
+                    document.getElementById("historyCard").hidden = false;
+                }
+            } catch {
+                sessionStorage.clear();
+                window.location.replace("index.html");
+            }
+        }
+
+        document.getElementById("logout").addEventListener("click", function () {
+            sessionStorage.clear();
+            window.location.replace("index.html");
+        });
+    </script>
+</body>
+</html>
+```
