@@ -187,9 +187,11 @@
                 message.textContent =
                     "Connexion réussie ! L'espace privé est en préparation.";
 
-                console.log(
-                    "Connexion réussie pour :",
-                    result.user.username
+               sessionStorage.setItem("access_token", result.session.access_token);
+sessionStorage.setItem("refresh_token", result.session.refresh_token);
+sessionStorage.setItem("user", JSON.stringify(result.user));
+
+window.location.href = "accueil.html";
                 );
 
             } catch (error) {
