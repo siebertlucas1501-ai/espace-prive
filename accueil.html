@@ -3,54 +3,103 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mon espace privé</title>
+
     <style>
         * { box-sizing: border-box; }
+
         body {
             margin: 0;
-            min-height: 100vh;
             font-family: Arial, sans-serif;
             background: #f1f5f9;
             color: #0f172a;
         }
+
         header {
             background: #0f172a;
             color: white;
-            padding: 22px;
+            padding: 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
             gap: 12px;
         }
-        header h1 { margin: 0; font-size: 23px; }
+
+        header h1 { margin: 0; font-size: 22px; }
+
+        button, input[type="file"] {
+            font: inherit;
+        }
+
         button {
             border: 0;
             border-radius: 8px;
-            padding: 11px 16px;
+            padding: 11px 15px;
             cursor: pointer;
             font-weight: bold;
         }
+
         #logout { background: #ef4444; color: white; }
-        main { max-width: 1000px; margin: 35px auto; padding: 0 18px; }
-        .welcome, .card {
+
+        main {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 16px;
+        }
+
+        .panel {
             background: white;
             border-radius: 14px;
-            padding: 24px;
+            padding: 22px;
             margin-bottom: 20px;
             box-shadow: 0 4px 15px #0f172a0d;
         }
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 18px;
+
+        .upload-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
         }
-        .card h2 { margin-top: 0; }
-        .icon { font-size: 30px; }
+
+        #uploadButton { background: #2563eb; color: white; }
+        #uploadButton:disabled { opacity: .6; cursor: wait; }
+
+        #fileInput {
+            max-width: 100%;
+            padding: 8px 0;
+        }
+
+        #message {
+            margin-top: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        .file-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .file-row:last-child { border-bottom: 0; }
+        .file-name { overflow-wrap: anywhere; font-weight: bold; }
+        .file-actions { flex-shrink: 0; }
+        .file-actions button { background: #e2e8f0; color: #0f172a; }
         .muted { color: #64748b; }
+
+        @media (max-width: 500px) {
+            .file-row { align-items: flex-start; }
+            .upload-row { align-items: stretch; flex-direction: column; }
+            #uploadButton { width: 100%; }
+        }
     </style>
 </head>
+
 <body>
     <header>
         <h1>🔐 Mon espace privé</h1>
@@ -58,36 +107,48 @@
     </header>
 
     <main>
-        <section class="welcome">
+        <section class="panel">
             <h2>Bienvenue, <span id="username">...</span> !</h2>
-            <p class="muted">Tu es connecté à ton espace privé.</p>
             <p>Rôle : <strong id="role">...</strong></p>
+            <p class="muted">
+                Les utilisateurs actifs peuvent ajouter des fichiers.
+                La suppression n'est pas proposée sur cette page.
+            </p>
         </section>
 
-        <div class="cards">
-            <section class="card">
-                <div class="icon">📁</div>
-                <h2>Documents</h2>
-                <p class="muted">Tes fichiers privés seront disponibles ici.</p>
-            </section>
-            <section class="card" id="usersCard" hidden>
-                <div class="icon">👥</div>
-                <h2>Utilisateurs</h2>
-                <p class="muted">La gestion des comptes sera ajoutée ensuite.</p>
-            </section>
-            <section class="card" id="historyCard" hidden>
-                <div class="icon">📋</div>
-                <h2>Historique</h2>
-                <p class="muted">L'historique des actions sera ajouté ensuite.</p>
-            </section>
-        </div>
+        <section class="panel">
+            <h2>📤 Ajouter un document</h2>
+            <p class="muted">Choisis un fichier sur ton appareil, puis envoie-le.</p>
+
+            <div class="upload-row">
+                <input type="file" id="fileInput">
+                <button id="uploadButton">Envoyer le fichier</button>
+            </div>
+
+            <div id="message" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="panel">
+            <h2>📁 Documents disponibles</h2>
+            <div id="fileList" class="muted">Chargement des documents...</div>
+        </section>
     </main>
 
     <script>
+        const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+        const SUPABASE_KEY =
+            "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
         const accessToken = sessionStorage.getItem("access_token");
+        const refreshToken = sessionStorage.getItem("refresh_token");
         const userText = sessionStorage.getItem("user");
 
-        if (!accessToken || !userText) {
+        const message = document.getElementById("message");
+        const fileList = document.getElementById("fileList");
+        const fileInput = document.getElementById("fileInput");
+        const uploadButton = document.getElementById("uploadButton");
+
+        if (!accessToken || !refreshToken || !userText) {
             window.location.replace("index.html");
         } else {
             try {
@@ -95,18 +156,169 @@
                 document.getElementById("username").textContent = user.username;
                 document.getElementById("role").textContent =
                     user.role === "admin" ? "Administrateur" : "Utilisateur";
-
-                if (user.role === "admin") {
-                    document.getElementById("usersCard").hidden = false;
-                    document.getElementById("historyCard").hidden = false;
-                }
+                chargerDocuments();
             } catch {
                 sessionStorage.clear();
                 window.location.replace("index.html");
             }
         }
 
-        document.getElementById("logout").addEventListener("click", function () {
+        function headersAuth() {
+            return {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${accessToken}`
+            };
+        }
+
+        function afficherMessage(texte, erreur = false) {
+            message.style.color = erreur ? "#dc2626" : "#15803d";
+            message.textContent = texte;
+        }
+
+        async function chargerDocuments() {
+            fileList.textContent = "Chargement des documents...";
+
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/storage/v1/object/list/documents-prives`,
+                    {
+                        method: "POST",
+                        headers: {
+                            ...headersAuth(),
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            prefix: "",
+                            limit: 100,
+                            offset: 0,
+                            sortBy: { column: "name", order: "asc" }
+                        })
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    fileList.textContent =
+                        "Impossible de charger les documents. Vérifie les autorisations.";
+                    console.error(result);
+                    return;
+                }
+
+                fileList.replaceChildren();
+
+                const files = result.filter(item => item.name);
+
+                if (files.length === 0) {
+                    fileList.textContent = "Aucun document pour le moment.";
+                    return;
+                }
+
+                for (const file of files) {
+                    const row = document.createElement("div");
+                    row.className = "file-row";
+
+                    const name = document.createElement("span");
+                    name.className = "file-name";
+                    name.textContent = file.name;
+
+                    const actions = document.createElement("div");
+                    actions.className = "file-actions";
+
+                    const openButton = document.createElement("button");
+                    openButton.textContent = "Télécharger";
+
+                    openButton.addEventListener("click", async () => {
+                        openButton.disabled = true;
+                        try {
+                            const downloadResponse = await fetch(
+                                `${SUPABASE_URL}/storage/v1/object/authenticated/documents-prives/${encodeURIComponent(file.name)}`,
+                                { headers: headersAuth() }
+                            );
+
+                            if (!downloadResponse.ok) {
+                                throw new Error("Téléchargement impossible.");
+                            }
+
+                            const blob = await downloadResponse.blob();
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = file.name;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        } catch (error) {
+                            alert("Impossible de télécharger ce fichier.");
+                        } finally {
+                            openButton.disabled = false;
+                        }
+                    });
+
+                    actions.appendChild(openButton);
+                    row.append(name, actions);
+                    fileList.appendChild(row);
+                }
+            } catch (error) {
+                fileList.textContent = "Erreur de connexion au stockage.";
+                console.error(error);
+            }
+        }
+
+        uploadButton.addEventListener("click", async () => {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                afficherMessage("Choisis d'abord un fichier.", true);
+                return;
+            }
+
+            // Éviter les noms contenant des chemins ou caractères problématiques.
+            const safeName = file.name
+                .normalize("NFKC")
+                .replace(/[^a-zA-Z0-9._() -]/g, "_");
+
+            const uniqueName =
+                `${Date.now()}_${safeName}`;
+
+            uploadButton.disabled = true;
+            afficherMessage("Envoi du fichier en cours...");
+
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/storage/v1/object/documents-prives/${encodeURIComponent(uniqueName)}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            ...headersAuth(),
+                            "Content-Type": file.type || "application/octet-stream",
+                            "x-upsert": "false"
+                        },
+                        body: file
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(errorText);
+                    afficherMessage(
+                        "Échec de l'envoi. Vérifie les règles Supabase et ta connexion.",
+                        true
+                    );
+                    return;
+                }
+
+                afficherMessage("Fichier envoyé avec succès !");
+                fileInput.value = "";
+                await chargerDocuments();
+            } catch (error) {
+                console.error(error);
+                afficherMessage("Impossible de joindre le stockage.", true);
+            } finally {
+                uploadButton.disabled = false;
+            }
+        });
+
+        document.getElementById("logout").addEventListener("click", () => {
             sessionStorage.clear();
             window.location.replace("index.html");
         });
