@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administration - Espace privé</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    main { max-width: 800px; margin: 30px auto; padding: 0 16px; }
+    .panel {
+      background: white;
+      padding: 22px;
+      margin-bottom: 20px;
+      border-radius: 14px;
+      box-shadow: 0 4px 15px #0f172a0d;
+    }
+    label { display: block; margin: 14px 0 6px; font-weight: bold; }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font: inherit;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #createButton { background: #2563eb; color: white; margin-top: 16px; }
+    #backButton { background: #e2e8f0; color: #0f172a; }
+    #message { margin-top: 14px; overflow-wrap: anywhere; }
+    .muted { color: #64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ Administration</h1>
+    <button id="backButton">Retour à l'accueil</button>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Créer un utilisateur</h2>
+      <p class="muted">
+        Le nom d'utilisateur doit contenir de 3 à 30 caractères.
+        Le mot de passe doit contenir au moins 10 caractères.
+      </p>
+
+      <form id="createForm">
+        <label for="newUsername">Nom d'utilisateur</label>
+        <input id="newUsername" name="username"
+          minlength="3" maxlength="30"
+          pattern="[a-zA-Z0-9._-]{3,30}"
+          autocomplete="off" required>
+
+        <label for="newPassword">Mot de passe provisoire</label>
+        <input id="newPassword" name="password" type="password"
+          minlength="10" autocomplete="new-password" required>
+
+        <button id="createButton" type="submit">Créer le compte</button>
+      </form>
+
+      <div id="message" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+    const accessToken = sessionStorage.getItem("access_token");
+    const userText = sessionStorage.getItem("user");
+    const form = document.getElementById("createForm");
+    const button = document.getElementById("createButton");
+    const message = document.getElementById("message");
+
+    function showMessage(text, error = false) {
+      message.textContent = text;
+      message.style.color = error ? "#dc2626" : "#15803d";
+    }
+
+    let user = null;
+    try {
+      user = JSON.parse(userText || "null");
+    } catch {
+      user = null;
+    }
+
+    if (!accessToken || !user) {
+      window.location.replace("index.html");
+    }
+
+    document.getElementById("backButton").addEventListener("click", () => {
+      window.location.href = "accueil.html";
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!accessToken || !user) {
+        showMessage("Reconnecte-toi avant de continuer.", true);
+        return;
+      }
+
+      const username = document.getElementById("newUsername").value.trim();
+      const password = document.getElementById("newPassword").value;
+
+      button.disabled = true;
+      showMessage("Création du compte en cours...");
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/create-user`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ username, password })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || "Création impossible.");
+        }
+
+        showMessage(`Compte « ${result.user.username} » créé avec succès.`);
+        form.reset();
+      } catch (error) {
+        showMessage(
+          error instanceof Error ? error.message : "Une erreur est survenue.",
+          true
+        );
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
