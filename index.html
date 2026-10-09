@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -80,19 +81,24 @@
             background: #1d4ed8;
         }
 
+        button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
         #message {
             min-height: 22px;
             margin-top: 18px;
             text-align: center;
             font-weight: bold;
+            overflow-wrap: anywhere;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="login-box">
-
+    <main class="login-box">
         <h1>🔐 Espace privé</h1>
 
         <div class="subtitle">
@@ -100,63 +106,99 @@
         </div>
 
         <form id="loginForm">
-
-            <label for="username">
-                Identifiant
-            </label>
-
+            <label for="username">Identifiant</label>
             <input
                 type="text"
                 id="username"
+                name="username"
                 placeholder="Ton identifiant"
                 autocomplete="username"
                 required
             >
 
-            <label for="password">
-                Mot de passe
-            </label>
-
+            <label for="password">Mot de passe</label>
             <input
                 type="password"
                 id="password"
+                name="password"
                 placeholder="Ton mot de passe"
                 autocomplete="current-password"
                 required
             >
 
-            <button type="submit">
-                Se connecter
-            </button>
-
+            <button type="submit">Se connecter</button>
         </form>
 
-        <div id="message"></div>
-
-    </div>
+        <div id="message" role="status" aria-live="polite"></div>
+    </main>
 
     <script>
         const loginForm = document.getElementById("loginForm");
         const message = document.getElementById("message");
+        const submitButton = loginForm.querySelector('button[type="submit"]');
 
-        loginForm.addEventListener("submit", async function(event) {
+        const SUPABASE_URL =
+            "https://fzbbyokmekokezllvjxh.supabase.co";
+
+        const SUPABASE_PUBLISHABLE_KEY =
+            "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+        loginForm.addEventListener("submit", async function (event) {
             event.preventDefault();
 
-            const username = document.getElementById("username").value.trim();
-            const password = document.getElementById("password").value;
+            const username =
+                document.getElementById("username").value.trim();
+
+            const password =
+                document.getElementById("password").value;
 
             message.style.color = "#2563eb";
             message.textContent = "Connexion en cours...";
+            submitButton.disabled = true;
 
-            /*
-             * Le système de connexion sécurisé sera branché ici
-             * avec notre Supabase Edge Function.
-             */
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/functions/v1/login`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "apikey": SUPABASE_PUBLISHABLE_KEY
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: password
+                        })
+                    }
+                );
 
-            console.log("Identifiant :", username);
+                const result = await response.json();
 
-            message.style.color = "#dc2626";
-            message.textContent = "Le système de connexion est en cours de configuration.";
+                if (!response.ok || !result.success) {
+                    message.style.color = "#dc2626";
+                    message.textContent =
+                        result.error || "Identifiant ou mot de passe incorrect.";
+                    return;
+                }
+
+                // La connexion a réussi, mais l'espace privé
+                // et la gestion persistante de la session restent à construire.
+                message.style.color = "#16a34a";
+                message.textContent =
+                    "Connexion réussie ! L'espace privé est en préparation.";
+
+                console.log(
+                    "Connexion réussie pour :",
+                    result.user.username
+                );
+
+            } catch (error) {
+                message.style.color = "#dc2626";
+                message.textContent =
+                    "Impossible de joindre le serveur. Réessaie.";
+            } finally {
+                submitButton.disabled = false;
+            }
         });
     </script>
 
