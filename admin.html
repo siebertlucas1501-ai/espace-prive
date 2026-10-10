@@ -4,26 +4,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administration - Espace privé</title>
+  <title>Administration - Mon espace privé</title>
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f5f9;
       color: #0f172a;
     }
+
     header {
       background: #0f172a;
       color: white;
-      padding: 20px;
+      padding: 18px 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 12px;
     }
-    main { max-width: 800px; margin: 30px auto; padding: 0 16px; }
+
+    header h1 { margin: 0; font-size: 22px; }
+
+    main {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+
     .panel {
       background: white;
       padding: 22px;
@@ -31,14 +41,22 @@
       border-radius: 14px;
       box-shadow: 0 4px 15px #0f172a0d;
     }
-    label { display: block; margin: 14px 0 6px; font-weight: bold; }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: bold;
+    }
+
     input {
+      display: block;
       width: 100%;
       padding: 12px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       font: inherit;
     }
+
     button {
       border: 0;
       border-radius: 8px;
@@ -47,87 +65,192 @@
       font-weight: bold;
       cursor: pointer;
     }
-    #createButton { background: #2563eb; color: white; margin-top: 16px; }
+
+    button:disabled { opacity: .6; cursor: wait; }
+
+    #createButton {
+      margin-top: 18px;
+      background: #2563eb;
+      color: white;
+    }
+
     #backButton { background: #e2e8f0; color: #0f172a; }
-    #message { margin-top: 14px; overflow-wrap: anywhere; }
+
+    #message {
+      margin-top: 15px;
+      overflow-wrap: anywhere;
+    }
+
     .muted { color: #64748b; }
+
+    @media (max-width: 500px) {
+      header { padding: 16px; }
+      header h1 { font-size: 19px; }
+      .panel { padding: 18px; }
+      #createButton { width: 100%; }
+    }
   </style>
 </head>
+
 <body>
   <header>
     <h1>⚙️ Administration</h1>
-    <button id="backButton">Retour à l'accueil</button>
+    <button id="backButton" type="button">Retour à l'accueil</button>
   </header>
 
   <main>
     <section class="panel">
       <h2>Créer un utilisateur</h2>
       <p class="muted">
-        Le nom d'utilisateur doit contenir de 3 à 30 caractères.
-        Le mot de passe doit contenir au moins 10 caractères.
+        Crée un compte avec un nom d'utilisateur et un mot de passe.
+        Aucun courriel personnel n'est nécessaire.
       </p>
 
       <form id="createForm">
         <label for="newUsername">Nom d'utilisateur</label>
-        <input id="newUsername" name="username"
-          minlength="3" maxlength="30"
+        <input
+          id="newUsername"
+          name="username"
+          minlength="3"
+          maxlength="30"
           pattern="[a-zA-Z0-9._-]{3,30}"
-          autocomplete="off" required>
+          autocomplete="off"
+          required
+        >
 
         <label for="newPassword">Mot de passe provisoire</label>
-        <input id="newPassword" name="password" type="password"
-          minlength="10" autocomplete="new-password" required>
+        <input
+          id="newPassword"
+          name="password"
+          type="password"
+          minlength="10"
+          autocomplete="new-password"
+          required
+        >
 
         <button id="createButton" type="submit">Créer le compte</button>
       </form>
 
       <div id="message" role="status" aria-live="polite"></div>
     </section>
+
+    <section class="panel">
+      <h2>Accès administrateur</h2>
+      <p id="sessionStatus" class="muted">Vérification de la session...</p>
+      <button id="loginButton" type="button" hidden>
+        Retour à la connexion
+      </button>
+    </section>
   </main>
 
   <script>
-    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+    const SUPABASE_URL =
+      "https://fzbbyokmekokezllvjxh.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
     const accessToken = sessionStorage.getItem("access_token");
     const userText = sessionStorage.getItem("user");
+
     const form = document.getElementById("createForm");
-    const button = document.getElementById("createButton");
+    const createButton = document.getElementById("createButton");
     const message = document.getElementById("message");
+    const sessionStatus = document.getElementById("sessionStatus");
+    const loginButton = document.getElementById("loginButton");
 
-    function showMessage(text, error = false) {
-      message.textContent = text;
-      message.style.color = error ? "#dc2626" : "#15803d";
-    }
+    let sessionValide = false;
 
-    let user = null;
-    try {
-      user = JSON.parse(userText || "null");
-    } catch {
-      user = null;
-    }
-
-    if (!accessToken || !user) {
-      window.location.replace("index.html");
+    function afficherMessage(texte, erreur = false) {
+      message.textContent = texte;
+      message.style.color = erreur ? "#dc2626" : "#15803d";
     }
 
     document.getElementById("backButton").addEventListener("click", () => {
       window.location.href = "accueil.html";
     });
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    loginButton.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
 
-      if (!accessToken || !user) {
-        showMessage("Reconnecte-toi avant de continuer.", true);
+    async function verifierSession() {
+      if (!accessToken || !userText) {
+        sessionStatus.textContent =
+          "Aucune session trouvée dans cet onglet. Connecte-toi d'abord.";
+        loginButton.hidden = false;
         return;
       }
 
-      const username = document.getElementById("newUsername").value.trim();
-      const password = document.getElementById("newPassword").value;
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/auth/v1/user`,
+          {
+            method: "GET",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Authorization": `Bearer ${accessToken}`
+            }
+          }
+        );
 
-      button.disabled = true;
-      showMessage("Création du compte en cours...");
+        if (!response.ok) {
+          sessionStatus.textContent =
+            "Ta session a expiré ou n'est plus valide. Reconnecte-toi.";
+          loginButton.hidden = false;
+          return;
+        }
+
+        const user = JSON.parse(userText);
+
+        if (!user || user.role !== "admin") {
+          sessionStatus.textContent =
+            "Le compte enregistré dans cette session n'est pas administrateur.";
+          return;
+        }
+
+        sessionValide = true;
+        sessionStatus.textContent =
+          "Session vérifiée. Bonjour " + user.username + ".";
+
+      } catch (error) {
+        sessionStatus.textContent =
+          "Impossible de vérifier la session. Vérifie ta connexion Internet.";
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!sessionValide) {
+        afficherMessage(
+          "La session n'est pas vérifiée. Attends la vérification ou reconnecte-toi.",
+          true
+        );
+        return;
+      }
+
+      const username =
+        document.getElementById("newUsername").value.trim();
+
+      const password =
+        document.getElementById("newPassword").value;
+
+      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+        afficherMessage("Nom d'utilisateur invalide.", true);
+        return;
+      }
+
+      if (password.length < 10) {
+        afficherMessage(
+          "Le mot de passe doit contenir au moins 10 caractères.",
+          true
+        );
+        return;
+      }
+
+      createButton.disabled = true;
+      afficherMessage("Création du compte en cours...");
 
       try {
         const response = await fetch(
@@ -146,20 +269,30 @@
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || "Création impossible.");
+          throw new Error(
+            result.error || "La création du compte a échoué."
+          );
         }
 
-        showMessage(`Compte « ${result.user.username} » créé avec succès.`);
+        afficherMessage(
+          `Le compte « ${result.user.username} » a été créé avec succès.`
+        );
+
         form.reset();
+
       } catch (error) {
-        showMessage(
-          error instanceof Error ? error.message : "Une erreur est survenue.",
+        afficherMessage(
+          error instanceof Error
+            ? error.message
+            : "Une erreur inattendue est survenue.",
           true
         );
       } finally {
-        button.disabled = false;
+        createButton.disabled = false;
       }
     });
+
+    verifierSession();
   </script>
 </body>
 </html>
