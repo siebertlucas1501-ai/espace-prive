@@ -1,328 +1,326 @@
-```html
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mon espace privé</title>
-
-    <style>
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            color: #0f172a;
-        }
-
-        header {
-            background: #0f172a;
-            color: white;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        header h1 { margin: 0; font-size: 22px; }
-
-        button, input[type="file"] {
-            font: inherit;
-        }
-
-        button {
-            border: 0;
-            border-radius: 8px;
-            padding: 11px 15px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        #logout { background: #ef4444; color: white; }
-
-        main {
-            max-width: 1000px;
-            margin: 30px auto;
-            padding: 0 16px;
-        }
-
-        .panel {
-            background: white;
-            border-radius: 14px;
-            padding: 22px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px #0f172a0d;
-        }
-
-        .upload-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-        }
-
-        #uploadButton { background: #2563eb; color: white; }
-        #uploadButton:disabled { opacity: .6; cursor: wait; }
-
-        #fileInput {
-            max-width: 100%;
-            padding: 8px 0;
-        }
-
-        #message {
-            margin-top: 14px;
-            overflow-wrap: anywhere;
-        }
-
-        .file-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 14px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .file-row:last-child { border-bottom: 0; }
-        .file-name { overflow-wrap: anywhere; font-weight: bold; }
-        .file-actions { flex-shrink: 0; }
-        .file-actions button { background: #e2e8f0; color: #0f172a; }
-        .muted { color: #64748b; }
-
-        @media (max-width: 500px) {
-            .file-row { align-items: flex-start; }
-            .upload-row { align-items: stretch; flex-direction: column; }
-            #uploadButton { width: 100%; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mon espace privé</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    header h1 { margin: 0; font-size: 22px; }
+    button, input[type="file"] { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 15px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    #logout { background: #ef4444; color: white; }
+    main { max-width: 1000px; margin: 30px auto; padding: 0 16px; }
+    .panel {
+      background: white;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px #0f172a0d;
+    }
+    .upload-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    #uploadButton { background: #2563eb; color: white; }
+    #fileInput { max-width: 100%; padding: 8px 0; }
+    #message { margin-top: 14px; overflow-wrap: anywhere; }
+    .file-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .file-row:last-child { border-bottom: 0; }
+    .file-name { overflow-wrap: anywhere; font-weight: bold; }
+    .file-actions { flex-shrink: 0; }
+    .file-actions button { background: #e2e8f0; color: #0f172a; }
+    .muted { color: #64748b; }
+    @media (max-width: 500px) {
+      .file-row { align-items: flex-start; }
+      .upload-row { align-items: stretch; flex-direction: column; }
+      #uploadButton { width: 100%; }
+    }
+  </style>
 </head>
-
 <body>
-    <header>
-        <h1>🔐 Mon espace privé</h1>
-        <button id="logout">Se déconnecter</button>
-    </header>
+  <header>
+    <h1>🔐 Mon espace privé</h1>
+    <button id="logout" type="button">Se déconnecter</button>
+  </header>
 
-    <main>
-        <section class="panel">
-            <h2>Bienvenue, <span id="username">...</span> !</h2>
-            <p>Rôle : <strong id="role">...</strong></p>
-            <p class="muted">
-                Les utilisateurs actifs peuvent ajouter des fichiers.
-                La suppression n'est pas proposée sur cette page.
-            </p>
-        </section>
+  <main>
+    <section class="panel">
+      <h2>Bienvenue, <span id="username">...</span> !</h2>
+      <p>Rôle : <strong id="role">...</strong></p>
+      <p class="muted">
+        Les utilisateurs actifs peuvent ajouter des fichiers.
+        La suppression n'est pas proposée sur cette page.
+      </p>
+    </section>
 
-        <section class="panel">
-            <h2>📤 Ajouter un document</h2>
-            <p class="muted">Choisis un fichier sur ton appareil, puis envoie-le.</p>
+    <section class="panel">
+      <h2>📤 Ajouter un document</h2>
+      <p class="muted">Choisis un fichier sur ton appareil, puis envoie-le.</p>
+      <div class="upload-row">
+        <input type="file" id="fileInput">
+        <button id="uploadButton" type="button">Envoyer le fichier</button>
+      </div>
+      <div id="message" role="status" aria-live="polite"></div>
+    </section>
 
-            <div class="upload-row">
-                <input type="file" id="fileInput">
-                <button id="uploadButton">Envoyer le fichier</button>
-            </div>
+    <section class="panel">
+      <h2>📁 Documents disponibles</h2>
+      <div id="fileList" class="muted">Chargement des documents...</div>
+    </section>
+  </main>
 
-            <div id="message" role="status" aria-live="polite"></div>
-        </section>
+  <script>
+    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
-        <section class="panel">
-            <h2>📁 Documents disponibles</h2>
-            <div id="fileList" class="muted">Chargement des documents...</div>
-        </section>
-    </main>
+    let accessToken = sessionStorage.getItem("access_token");
+    const refreshToken = sessionStorage.getItem("refresh_token");
+    const userText = sessionStorage.getItem("user");
 
-    <script>
-        const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
-        const SUPABASE_KEY =
-            "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+    const message = document.getElementById("message");
+    const fileList = document.getElementById("fileList");
+    const fileInput = document.getElementById("fileInput");
+    const uploadButton = document.getElementById("uploadButton");
 
-        const accessToken = sessionStorage.getItem("access_token");
-        const refreshToken = sessionStorage.getItem("refresh_token");
-        const userText = sessionStorage.getItem("user");
+    function headersAuth() {
+      return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${accessToken}`
+      };
+    }
 
-        const message = document.getElementById("message");
-        const fileList = document.getElementById("fileList");
-        const fileInput = document.getElementById("fileInput");
-        const uploadButton = document.getElementById("uploadButton");
+    function afficherMessage(texte, erreur = false) {
+      message.style.color = erreur ? "#dc2626" : "#15803d";
+      message.textContent = texte;
+    }
 
-        if (!accessToken || !refreshToken || !userText) {
-            window.location.replace("index.html");
-        } else {
+    function nomFichierValide(nom) {
+      return typeof nom === "string" &&
+        nom.length > 0 &&
+        nom !== ".emptyFolderPlaceholder";
+    }
+
+    async function verifierSession() {
+      if (!accessToken || !refreshToken || !userText) {
+        window.location.replace("index.html");
+        return false;
+      }
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: headersAuth()
+        });
+
+        if (!response.ok) {
+          sessionStorage.clear();
+          window.location.replace("index.html");
+          return false;
+        }
+
+        const user = JSON.parse(userText);
+        document.getElementById("username").textContent = user.username || "Utilisateur";
+        document.getElementById("role").textContent =
+          user.role === "admin" ? "Administrateur" : "Utilisateur";
+
+        return true;
+      } catch (error) {
+        fileList.textContent = "Impossible de vérifier la connexion. Recharge la page.";
+        return false;
+      }
+    }
+
+    async function chargerDocuments() {
+      fileList.textContent = "Chargement des documents...";
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/list/documents-prives`,
+          {
+            method: "POST",
+            headers: {
+              ...headersAuth(),
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              prefix: "",
+              limit: 100,
+              offset: 0,
+              sortBy: { column: "name", order: "asc" }
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !Array.isArray(result)) {
+          fileList.textContent = "Impossible de charger les documents. Vérifie les autorisations.";
+          console.error(result);
+          return;
+        }
+
+        fileList.replaceChildren();
+
+        const files = result.filter(item =>
+          item &&
+          nomFichierValide(item.name) &&
+          item.id !== null &&
+          item.metadata !== null
+        );
+
+        if (files.length === 0) {
+          fileList.textContent = "Aucun document pour le moment.";
+          return;
+        }
+
+        fileList.className = "";
+
+        for (const file of files) {
+          const row = document.createElement("div");
+          row.className = "file-row";
+
+          const name = document.createElement("span");
+          name.className = "file-name";
+          name.textContent = file.name;
+
+          const actions = document.createElement("div");
+          actions.className = "file-actions";
+
+          const downloadButton = document.createElement("button");
+          downloadButton.type = "button";
+          downloadButton.textContent = "Télécharger";
+
+          downloadButton.addEventListener("click", async () => {
+            downloadButton.disabled = true;
+
             try {
-                const user = JSON.parse(userText);
-                document.getElementById("username").textContent = user.username;
-                document.getElementById("role").textContent =
-                    user.role === "admin" ? "Administrateur" : "Utilisateur";
-                chargerDocuments();
-            } catch {
-                sessionStorage.clear();
-                window.location.replace("index.html");
-            }
-        }
+              const downloadResponse = await fetch(
+                `${SUPABASE_URL}/storage/v1/object/authenticated/documents-prives/${file.name.split("/").map(encodeURIComponent).join("/")}`,
+                { headers: headersAuth() }
+              );
 
-        function headersAuth() {
-            return {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${accessToken}`
-            };
-        }
+              if (!downloadResponse.ok) {
+                throw new Error("Téléchargement impossible.");
+              }
 
-        function afficherMessage(texte, erreur = false) {
-            message.style.color = erreur ? "#dc2626" : "#15803d";
-            message.textContent = texte;
-        }
-
-        async function chargerDocuments() {
-            fileList.textContent = "Chargement des documents...";
-
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/storage/v1/object/list/documents-prives`,
-                    {
-                        method: "POST",
-                        headers: {
-                            ...headersAuth(),
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            prefix: "",
-                            limit: 100,
-                            offset: 0,
-                            sortBy: { column: "name", order: "asc" }
-                        })
-                    }
-                );
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    fileList.textContent =
-                        "Impossible de charger les documents. Vérifie les autorisations.";
-                    console.error(result);
-                    return;
-                }
-
-                fileList.replaceChildren();
-
-                const files = result.filter(item => item.name);
-
-                if (files.length === 0) {
-                    fileList.textContent = "Aucun document pour le moment.";
-                    return;
-                }
-
-                for (const file of files) {
-                    const row = document.createElement("div");
-                    row.className = "file-row";
-
-                    const name = document.createElement("span");
-                    name.className = "file-name";
-                    name.textContent = file.name;
-
-                    const actions = document.createElement("div");
-                    actions.className = "file-actions";
-
-                    const openButton = document.createElement("button");
-                    openButton.textContent = "Télécharger";
-
-                    openButton.addEventListener("click", async () => {
-                        openButton.disabled = true;
-                        try {
-                            const downloadResponse = await fetch(
-                                `${SUPABASE_URL}/storage/v1/object/authenticated/documents-prives/${encodeURIComponent(file.name)}`,
-                                { headers: headersAuth() }
-                            );
-
-                            if (!downloadResponse.ok) {
-                                throw new Error("Téléchargement impossible.");
-                            }
-
-                            const blob = await downloadResponse.blob();
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = file.name;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                        } catch (error) {
-                            alert("Impossible de télécharger ce fichier.");
-                        } finally {
-                            openButton.disabled = false;
-                        }
-                    });
-
-                    actions.appendChild(openButton);
-                    row.append(name, actions);
-                    fileList.appendChild(row);
-                }
+              const blob = await downloadResponse.blob();
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = file.name.split("/").pop();
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
             } catch (error) {
-                fileList.textContent = "Erreur de connexion au stockage.";
-                console.error(error);
-            }
-        }
-
-        uploadButton.addEventListener("click", async () => {
-            const file = fileInput.files[0];
-
-            if (!file) {
-                afficherMessage("Choisis d'abord un fichier.", true);
-                return;
-            }
-
-            // Éviter les noms contenant des chemins ou caractères problématiques.
-            const safeName = file.name
-                .normalize("NFKC")
-                .replace(/[^a-zA-Z0-9._() -]/g, "_");
-
-            const uniqueName =
-                `${Date.now()}_${safeName}`;
-
-            uploadButton.disabled = true;
-            afficherMessage("Envoi du fichier en cours...");
-
-            try {
-                const response = await fetch(
-                    `${SUPABASE_URL}/storage/v1/object/documents-prives/${encodeURIComponent(uniqueName)}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            ...headersAuth(),
-                            "Content-Type": file.type || "application/octet-stream",
-                            "x-upsert": "false"
-                        },
-                        body: file
-                    }
-                );
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(errorText);
-                    afficherMessage(
-                        "Échec de l'envoi. Vérifie les règles Supabase et ta connexion.",
-                        true
-                    );
-                    return;
-                }
-
-                afficherMessage("Fichier envoyé avec succès !");
-                fileInput.value = "";
-                await chargerDocuments();
-            } catch (error) {
-                console.error(error);
-                afficherMessage("Impossible de joindre le stockage.", true);
+              alert("Impossible de télécharger ce fichier.");
             } finally {
-                uploadButton.disabled = false;
+              downloadButton.disabled = false;
             }
-        });
+          });
 
-        document.getElementById("logout").addEventListener("click", () => {
-            sessionStorage.clear();
-            window.location.replace("index.html");
-        });
-    </script>
+          actions.appendChild(downloadButton);
+          row.append(name, actions);
+          fileList.appendChild(row);
+        }
+      } catch (error) {
+        fileList.textContent = "Erreur de connexion au stockage.";
+        console.error(error);
+      }
+    }
+
+    uploadButton.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+
+      if (!file) {
+        afficherMessage("Choisis d'abord un fichier.", true);
+        return;
+      }
+
+      const safeName = file.name
+        .normalize("NFKC")
+        .replace(/[^a-zA-Z0-9._() -]/g, "_");
+
+      const uniqueName = `${Date.now()}_${safeName}`;
+
+      uploadButton.disabled = true;
+      afficherMessage("Envoi du fichier en cours...");
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/documents-prives/${encodeURIComponent(uniqueName)}`,
+          {
+            method: "POST",
+            headers: {
+              ...headersAuth(),
+              "Content-Type": file.type || "application/octet-stream",
+              "x-upsert": "false"
+            },
+            body: file
+          }
+        );
+
+        if (!response.ok) {
+          console.error(await response.text());
+          afficherMessage("Échec de l'envoi. Vérifie les règles Supabase et ta connexion.", true);
+          return;
+        }
+
+        afficherMessage("Fichier envoyé avec succès !");
+        fileInput.value = "";
+        await chargerDocuments();
+      } catch (error) {
+        console.error(error);
+        afficherMessage("Impossible de joindre le stockage.", true);
+      } finally {
+        uploadButton.disabled = false;
+      }
+    });
+
+    document.getElementById("logout").addEventListener("click", () => {
+      sessionStorage.clear();
+      window.location.replace("index.html");
+    });
+
+    (async () => {
+      const sessionOk = await verifierSession();
+      if (sessionOk) {
+        await chargerDocuments();
+      }
+    })();
+  </script>
 </body>
 </html>
-```
