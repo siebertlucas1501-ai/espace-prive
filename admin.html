@@ -29,7 +29,7 @@
     header h1 { margin: 0; font-size: 22px; }
 
     main {
-      max-width: 800px;
+      max-width: 950px;
       margin: 30px auto;
       padding: 0 16px;
     }
@@ -60,7 +60,7 @@
     button {
       border: 0;
       border-radius: 8px;
-      padding: 12px 16px;
+      padding: 11px 15px;
       font: inherit;
       font-weight: bold;
       cursor: pointer;
@@ -74,19 +74,54 @@
       color: white;
     }
 
-    #backButton { background: #e2e8f0; color: #0f172a; }
+    #backButton, #refreshButton {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
 
-    #message {
-      margin-top: 15px;
+    #message, #listMessage {
+      margin-top: 14px;
       overflow-wrap: anywhere;
     }
 
     .muted { color: #64748b; }
 
-    @media (max-width: 500px) {
+    .user-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .user-row:last-child { border-bottom: 0; }
+
+    .user-name { font-weight: bold; overflow-wrap: anywhere; }
+
+    .tag {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .tag.admin { background: #dbeafe; color: #1d4ed8; }
+    .tag.active { background: #dcfce7; color: #166534; }
+    .tag.inactive { background: #fee2e2; color: #991b1b; }
+
+    @media (max-width: 600px) {
       header { padding: 16px; }
       header h1 { font-size: 19px; }
       .panel { padding: 18px; }
+      .user-row {
+        grid-template-columns: 1fr auto;
+      }
+      .user-row .status {
+        grid-column: 1 / -1;
+      }
       #createButton { width: 100%; }
     }
   </style>
@@ -135,6 +170,18 @@
     </section>
 
     <section class="panel">
+      <h2>👥 Utilisateurs existants</h2>
+      <p class="muted">
+        Voici les comptes enregistrés dans ton espace privé.
+      </p>
+      <button id="refreshButton" type="button">Actualiser la liste</button>
+      <div id="listMessage" role="status" aria-live="polite">
+        Chargement des utilisateurs...
+      </div>
+      <div id="userList"></div>
+    </section>
+
+    <section class="panel">
       <h2>Accès administrateur</h2>
       <p id="sessionStatus" class="muted">Vérification de la session...</p>
       <button id="loginButton" type="button" hidden>
@@ -158,12 +205,23 @@
     const message = document.getElementById("message");
     const sessionStatus = document.getElementById("sessionStatus");
     const loginButton = document.getElementById("loginButton");
+    const userList = document.getElementById("userList");
+    const listMessage = document.getElementById("listMessage");
+    const refreshButton = document.getElementById("refreshButton");
 
     let sessionValide = false;
 
     function afficherMessage(texte, erreur = false) {
-      message.textContent = texte;
       message.style.color = erreur ? "#dc2626" : "#15803d";
+      message.textContent = texte;
+    }
+
+    function headersAuth() {
+      return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      };
     }
 
     document.getElementById("backButton").addEventListener("click", () => {
@@ -179,43 +237,113 @@
         sessionStatus.textContent =
           "Aucune session trouvée dans cet onglet. Connecte-toi d'abord.";
         loginButton.hidden = false;
-        return;
+        form.hidden = true;
+        refreshButton.disabled = true;
+        return false;
       }
 
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/auth/v1/user`,
-          {
-            method: "GET",
-            headers: {
-              "apikey": SUPABASE_KEY,
-              "Authorization": `Bearer ${accessToken}`
-            }
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${accessToken}`
           }
-        );
+        });
 
         if (!response.ok) {
           sessionStatus.textContent =
-            "Ta session a expiré ou n'est plus valide. Reconnecte-toi.";
+            "Session expirée ou invalide. Reconnecte-toi.";
           loginButton.hidden = false;
-          return;
+          form.hidden = true;
+          refreshButton.disabled = true;
+          return false;
         }
 
         const user = JSON.parse(userText);
 
         if (!user || user.role !== "admin") {
           sessionStatus.textContent =
-            "Le compte enregistré dans cette session n'est pas administrateur.";
-          return;
+            "Ce compte n'est pas administrateur.";
+          form.hidden = true;
+          refreshButton.disabled = true;
+          return false;
         }
 
         sessionValide = true;
         sessionStatus.textContent =
-          "Session vérifiée. Bonjour " + user.username + ".";
+          "Session vérifiée. Bonjour " + (user.username || "administrateur") + ".";
 
+        return true;
       } catch (error) {
         sessionStatus.textContent =
-          "Impossible de vérifier la session. Vérifie ta connexion Internet.";
+          "Impossible de vérifier la session. Vérifie ta connexion.";
+        form.hidden = true;
+        refreshButton.disabled = true;
+        return false;
+      }
+    }
+
+    async function chargerUtilisateurs() {
+      if (!sessionValide) return;
+
+      refreshButton.disabled = true;
+      userList.replaceChildren();
+      listMessage.textContent = "Chargement des utilisateurs...";
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/list-users`,
+          {
+            method: "POST",
+            headers: headersAuth(),
+            body: JSON.stringify({})
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || result.success !== true) {
+          throw new Error(
+            result.error || "Impossible de récupérer les utilisateurs."
+          );
+        }
+
+        if (!Array.isArray(result.users) || result.users.length === 0) {
+          listMessage.textContent = "Aucun utilisateur trouvé.";
+          return;
+        }
+
+        listMessage.textContent =
+          `${result.users.length} compte(s) trouvé(s).`;
+
+        for (const user of result.users) {
+          const row = document.createElement("div");
+          row.className = "user-row";
+
+          const name = document.createElement("div");
+          name.className = "user-name";
+          name.textContent = user.username || "Nom inconnu";
+
+          const role = document.createElement("span");
+          role.className = "tag" +
+            (user.role === "admin" ? " admin" : "");
+          role.textContent =
+            user.role === "admin" ? "Administrateur" : "Utilisateur";
+
+          const status = document.createElement("span");
+          status.className = "tag status " +
+            (user.active === true ? "active" : "inactive");
+          status.textContent =
+            user.active === true ? "Actif" : "Désactivé";
+
+          row.append(name, role, status);
+          userList.appendChild(row);
+        }
+      } catch (error) {
+        listMessage.textContent =
+          "Erreur : " + (error.message || "chargement impossible.");
+      } finally {
+        refreshButton.disabled = false;
       }
     }
 
@@ -223,10 +351,7 @@
       event.preventDefault();
 
       if (!sessionValide) {
-        afficherMessage(
-          "La session n'est pas vérifiée. Attends la vérification ou reconnecte-toi.",
-          true
-        );
+        afficherMessage("Session non vérifiée. Reconnecte-toi.", true);
         return;
       }
 
@@ -257,21 +382,15 @@
           `${SUPABASE_URL}/functions/v1/create-user`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": SUPABASE_KEY,
-              "Authorization": `Bearer ${accessToken}`
-            },
+            headers: headersAuth(),
             body: JSON.stringify({ username, password })
           }
         );
 
         const result = await response.json();
 
-        if (!response.ok || !result.success) {
-          throw new Error(
-            result.error || "La création du compte a échoué."
-          );
+        if (!response.ok || result.success !== true) {
+          throw new Error(result.error || "La création du compte a échoué.");
         }
 
         afficherMessage(
@@ -279,12 +398,10 @@
         );
 
         form.reset();
-
+        await chargerUtilisateurs();
       } catch (error) {
         afficherMessage(
-          error instanceof Error
-            ? error.message
-            : "Une erreur inattendue est survenue.",
+          error.message || "Une erreur inattendue est survenue.",
           true
         );
       } finally {
@@ -292,7 +409,14 @@
       }
     });
 
-    verifierSession();
+    refreshButton.addEventListener("click", chargerUtilisateurs);
+
+    (async () => {
+      const ok = await verifierSession();
+      if (ok) {
+        await chargerUtilisateurs();
+      }
+    })();
   </script>
 </body>
 </html>
