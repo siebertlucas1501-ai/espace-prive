@@ -97,7 +97,10 @@
 
     .user-row:last-child { border-bottom: 0; }
 
-    .user-name { font-weight: bold; overflow-wrap: anywhere; }
+    .user-name {
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
 
     .tag {
       display: inline-block;
@@ -112,16 +115,38 @@
     .tag.active { background: #dcfce7; color: #166534; }
     .tag.inactive { background: #fee2e2; color: #991b1b; }
 
+    .user-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .disable-button {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .enable-button {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .user-actions button { font-size: 13px; }
+
     @media (max-width: 600px) {
       header { padding: 16px; }
       header h1 { font-size: 19px; }
       .panel { padding: 18px; }
+
       .user-row {
         grid-template-columns: 1fr auto;
       }
-      .user-row .status {
+
+      .user-row .status,
+      .user-row .user-actions {
         grid-column: 1 / -1;
       }
+
       #createButton { width: 100%; }
     }
   </style>
@@ -172,12 +197,16 @@
     <section class="panel">
       <h2>👥 Utilisateurs existants</h2>
       <p class="muted">
-        Voici les comptes enregistrés dans ton espace privé.
+        Consulte les comptes et gère l'accès des utilisateurs.
+        Les comptes administrateurs ne peuvent pas être modifiés ici.
       </p>
+
       <button id="refreshButton" type="button">Actualiser la liste</button>
+
       <div id="listMessage" role="status" aria-live="polite">
         Chargement des utilisateurs...
       </div>
+
       <div id="userList"></div>
     </section>
 
@@ -271,7 +300,8 @@
 
         sessionValide = true;
         sessionStatus.textContent =
-          "Session vérifiée. Bonjour " + (user.username || "administrateur") + ".";
+          "Session vérifiée. Bonjour " +
+          (user.username || "administrateur") + ".";
 
         return true;
       } catch (error) {
@@ -316,6 +346,8 @@
         listMessage.textContent =
           `${result.users.length} compte(s) trouvé(s).`;
 
+        const currentUser = JSON.parse(userText);
+
         for (const user of result.users) {
           const row = document.createElement("div");
           row.className = "user-row";
@@ -336,7 +368,72 @@
           status.textContent =
             user.active === true ? "Actif" : "Désactivé";
 
-          row.append(name, role, status);
+          const actions = document.createElement("div");
+          actions.className = "user-actions";
+
+          // On ne propose aucune action sur les comptes administrateurs.
+          if (
+            user.role === "user" &&
+            user.id !== currentUser.id
+          ) {
+            const actionButton = document.createElement("button");
+            actionButton.type = "button";
+
+            if (user.active === true) {
+              actionButton.textContent = "Désactiver";
+              actionButton.className = "disable-button";
+            } else {
+              actionButton.textContent = "Réactiver";
+              actionButton.className = "enable-button";
+            }
+
+            actionButton.addEventListener("click", async () => {
+              const newStatus = user.active !== true;
+              const confirmation = newStatus
+                ? `Réactiver le compte « ${user.username} » ?`
+                : `Désactiver le compte « ${user.username} » ?`;
+
+              if (!window.confirm(confirmation)) return;
+
+              actionButton.disabled = true;
+              listMessage.textContent = "Modification du compte en cours...";
+
+              try {
+                const statusResponse = await fetch(
+                  `${SUPABASE_URL}/functions/v1/update-user-status`,
+                  {
+                    method: "POST",
+                    headers: headersAuth(),
+                    body: JSON.stringify({
+                      userId: user.id,
+                      active: newStatus
+                    })
+                  }
+                );
+
+                const statusResult = await statusResponse.json();
+
+                if (!statusResponse.ok || statusResult.success !== true) {
+                  throw new Error(
+                    statusResult.error ||
+                    "Impossible de modifier le compte."
+                  );
+                }
+
+                listMessage.textContent = statusResult.message;
+                await chargerUtilisateurs();
+              } catch (error) {
+                listMessage.textContent =
+                  "Erreur : " +
+                  (error.message || "modification impossible.");
+                actionButton.disabled = false;
+              }
+            });
+
+            actions.appendChild(actionButton);
+          }
+
+          row.append(name, role, status, actions);
           userList.appendChild(row);
         }
       } catch (error) {
@@ -390,7 +487,9 @@
         const result = await response.json();
 
         if (!response.ok || result.success !== true) {
-          throw new Error(result.error || "La création du compte a échoué.");
+          throw new Error(
+            result.error || "La création du compte a échoué."
+          );
         }
 
         afficherMessage(
