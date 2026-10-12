@@ -82,7 +82,37 @@
     .password-button { background: #fef3c7; color: #92400e; }
     .user-actions button { font-size: 13px; }
 
+    /* Tableau de bord */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .stat-card {
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+    .stat-label {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .stat-number {
+      font-size: 30px;
+      font-weight: bold;
+      line-height: 1.2;
+    }
+    .stat-detail {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 7px;
+    }
+
     @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       header { padding: 16px; }
       header h1 { font-size: 19px; }
       .panel { padding: 18px; }
@@ -99,6 +129,36 @@
   </header>
 
   <main>
+    <!-- Tableau de bord -->
+    <section class="panel">
+      <h2>📊 Tableau de bord</h2>
+      <p class="muted">Résumé des comptes enregistrés sur ton espace privé.</p>
+
+      <div class="stats-grid" aria-live="polite">
+        <div class="stat-card">
+          <div class="stat-label">Total des comptes</div>
+          <div class="stat-number" id="statTotal">—</div>
+          <div class="stat-detail">Tous les comptes listés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Comptes actifs</div>
+          <div class="stat-number" id="statActive">—</div>
+          <div class="stat-detail">Accès activé</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Comptes désactivés</div>
+          <div class="stat-number" id="statInactive">—</div>
+          <div class="stat-detail">Accès désactivé</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Administrateurs</div>
+          <div class="stat-number" id="statAdmins">—</div>
+          <div class="stat-detail">Comptes avec le rôle admin</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Création d'utilisateur -->
     <section class="panel">
       <h2>Créer un utilisateur</h2>
       <p class="muted">
@@ -134,6 +194,7 @@
       <div id="message" role="status" aria-live="polite"></div>
     </section>
 
+    <!-- Liste des utilisateurs -->
     <section class="panel">
       <h2>👥 Utilisateurs existants</h2>
       <p class="muted">
@@ -149,6 +210,7 @@
       <div id="userList"></div>
     </section>
 
+    <!-- État de la session -->
     <section class="panel">
       <h2>Accès administrateur</h2>
       <p id="sessionStatus" class="muted">Vérification de la session...</p>
@@ -281,13 +343,33 @@
       try {
         const result = await appelerFonction("list-users", {});
 
-        if (!Array.isArray(result.users) || result.users.length === 0) {
+        if (!Array.isArray(result.users)) {
+          throw new Error(
+            "La réponse du serveur ne contient pas une liste d'utilisateurs valide."
+          );
+        }
+
+        // Calcul des statistiques
+        const total = result.users.length;
+        const actifs = result.users.filter(
+          user => user.active === true
+        ).length;
+        const desactives = total - actifs;
+        const admins = result.users.filter(
+          user => user.role === "admin"
+        ).length;
+
+        document.getElementById("statTotal").textContent = total;
+        document.getElementById("statActive").textContent = actifs;
+        document.getElementById("statInactive").textContent = desactives;
+        document.getElementById("statAdmins").textContent = admins;
+
+        if (total === 0) {
           listMessage.textContent = "Aucun utilisateur trouvé.";
           return;
         }
 
-        listMessage.textContent =
-          `${result.users.length} compte(s) trouvé(s).`;
+        listMessage.textContent = `${total} compte(s) trouvé(s).`;
 
         const currentUser = JSON.parse(userText);
 
@@ -313,6 +395,7 @@
           actions.className = "user-actions";
 
           if (user.role === "user" && user.id !== currentUser.id) {
+            // Changement de nom
             const renameButton = document.createElement("button");
             renameButton.type = "button";
             renameButton.className = "rename-button";
@@ -361,6 +444,7 @@
               }
             });
 
+            // Réinitialisation du mot de passe
             const passwordButton = document.createElement("button");
             passwordButton.type = "button";
             passwordButton.className = "password-button";
@@ -418,6 +502,7 @@
               }
             });
 
+            // Activation et désactivation du compte
             const actionButton = document.createElement("button");
             actionButton.type = "button";
 
@@ -472,6 +557,7 @@
       }
     }
 
+    // Création d'un utilisateur
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
