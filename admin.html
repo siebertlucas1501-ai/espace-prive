@@ -7,14 +7,12 @@
   <title>Administration - Mon espace privé</title>
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f5f9;
       color: #0f172a;
     }
-
     header {
       background: #0f172a;
       color: white;
@@ -25,15 +23,8 @@
       flex-wrap: wrap;
       gap: 12px;
     }
-
     header h1 { margin: 0; font-size: 22px; }
-
-    main {
-      max-width: 950px;
-      margin: 30px auto;
-      padding: 0 16px;
-    }
-
+    main { max-width: 1050px; margin: 30px auto; padding: 0 16px; }
     .panel {
       background: white;
       padding: 22px;
@@ -41,13 +32,7 @@
       border-radius: 14px;
       box-shadow: 0 4px 15px #0f172a0d;
     }
-
-    label {
-      display: block;
-      margin: 14px 0 6px;
-      font-weight: bold;
-    }
-
+    label { display: block; margin: 14px 0 6px; font-weight: bold; }
     input {
       display: block;
       width: 100%;
@@ -56,7 +41,6 @@
       border-radius: 8px;
       font: inherit;
     }
-
     button {
       border: 0;
       border-radius: 8px;
@@ -65,27 +49,11 @@
       font-weight: bold;
       cursor: pointer;
     }
-
     button:disabled { opacity: .6; cursor: wait; }
-
-    #createButton {
-      margin-top: 18px;
-      background: #2563eb;
-      color: white;
-    }
-
-    #backButton, #refreshButton {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-
-    #message, #listMessage {
-      margin-top: 14px;
-      overflow-wrap: anywhere;
-    }
-
+    #createButton { margin-top: 18px; background: #2563eb; color: white; }
+    #backButton, #refreshButton { background: #e2e8f0; color: #0f172a; }
+    #message, #listMessage { margin-top: 14px; overflow-wrap: anywhere; }
     .muted { color: #64748b; }
-
     .user-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto auto;
@@ -94,14 +62,8 @@
       padding: 14px 0;
       border-bottom: 1px solid #e2e8f0;
     }
-
     .user-row:last-child { border-bottom: 0; }
-
-    .user-name {
-      font-weight: bold;
-      overflow-wrap: anywhere;
-    }
-
+    .user-name { font-weight: bold; overflow-wrap: anywhere; }
     .tag {
       display: inline-block;
       padding: 5px 9px;
@@ -110,48 +72,26 @@
       background: #e2e8f0;
       white-space: nowrap;
     }
-
     .tag.admin { background: #dbeafe; color: #1d4ed8; }
     .tag.active { background: #dcfce7; color: #166534; }
     .tag.inactive { background: #fee2e2; color: #991b1b; }
-
-    .user-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .disable-button {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .enable-button {
-      background: #dcfce7;
-      color: #166534;
-    }
-
+    .user-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .disable-button { background: #fee2e2; color: #991b1b; }
+    .enable-button { background: #dcfce7; color: #166534; }
+    .rename-button { background: #dbeafe; color: #1d4ed8; }
+    .password-button { background: #fef3c7; color: #92400e; }
     .user-actions button { font-size: 13px; }
 
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       header { padding: 16px; }
       header h1 { font-size: 19px; }
       .panel { padding: 18px; }
-
-      .user-row {
-        grid-template-columns: 1fr auto;
-      }
-
-      .user-row .status,
-      .user-row .user-actions {
-        grid-column: 1 / -1;
-      }
-
+      .user-row { grid-template-columns: 1fr auto; }
+      .user-row .status, .user-row .user-actions { grid-column: 1 / -1; }
       #createButton { width: 100%; }
     }
   </style>
 </head>
-
 <body>
   <header>
     <h1>⚙️ Administration</h1>
@@ -197,34 +137,28 @@
     <section class="panel">
       <h2>👥 Utilisateurs existants</h2>
       <p class="muted">
-        Consulte les comptes et gère l'accès des utilisateurs.
-        Les comptes administrateurs ne peuvent pas être modifiés ici.
+        Consulte les comptes, modifie leur nom, réinitialise leur mot de passe
+        et gère leur accès. Les comptes administrateurs ne peuvent pas être
+        modifiés ici.
       </p>
 
       <button id="refreshButton" type="button">Actualiser la liste</button>
-
       <div id="listMessage" role="status" aria-live="polite">
         Chargement des utilisateurs...
       </div>
-
       <div id="userList"></div>
     </section>
 
     <section class="panel">
       <h2>Accès administrateur</h2>
       <p id="sessionStatus" class="muted">Vérification de la session...</p>
-      <button id="loginButton" type="button" hidden>
-        Retour à la connexion
-      </button>
+      <button id="loginButton" type="button" hidden>Retour à la connexion</button>
     </section>
   </main>
 
   <script>
-    const SUPABASE_URL =
-      "https://fzbbyokmekokezllvjxh.supabase.co";
-
-    const SUPABASE_KEY =
-      "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
     const accessToken = sessionStorage.getItem("access_token");
     const userText = sessionStorage.getItem("user");
@@ -291,8 +225,7 @@
         const user = JSON.parse(userText);
 
         if (!user || user.role !== "admin") {
-          sessionStatus.textContent =
-            "Ce compte n'est pas administrateur.";
+          sessionStatus.textContent = "Ce compte n'est pas administrateur.";
           form.hidden = true;
           refreshButton.disabled = true;
           return false;
@@ -313,6 +246,31 @@
       }
     }
 
+    async function appelerFonction(nom, donnees) {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/${nom}`,
+        {
+          method: "POST",
+          headers: headersAuth(),
+          body: JSON.stringify(donnees)
+        }
+      );
+
+      let result;
+
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error("Réponse serveur illisible.");
+      }
+
+      if (!response.ok || result.success !== true) {
+        throw new Error(result.error || `La fonction ${nom} a échoué.`);
+      }
+
+      return result;
+    }
+
     async function chargerUtilisateurs() {
       if (!sessionValide) return;
 
@@ -321,22 +279,7 @@
       listMessage.textContent = "Chargement des utilisateurs...";
 
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/list-users`,
-          {
-            method: "POST",
-            headers: headersAuth(),
-            body: JSON.stringify({})
-          }
-        );
-
-        const result = await response.json();
-
-        if (!response.ok || result.success !== true) {
-          throw new Error(
-            result.error || "Impossible de récupérer les utilisateurs."
-          );
-        }
+        const result = await appelerFonction("list-users", {});
 
         if (!Array.isArray(result.users) || result.users.length === 0) {
           listMessage.textContent = "Aucun utilisateur trouvé.";
@@ -357,25 +300,124 @@
           name.textContent = user.username || "Nom inconnu";
 
           const role = document.createElement("span");
-          role.className = "tag" +
-            (user.role === "admin" ? " admin" : "");
+          role.className = "tag" + (user.role === "admin" ? " admin" : "");
           role.textContent =
             user.role === "admin" ? "Administrateur" : "Utilisateur";
 
           const status = document.createElement("span");
-          status.className = "tag status " +
-            (user.active === true ? "active" : "inactive");
-          status.textContent =
-            user.active === true ? "Actif" : "Désactivé";
+          status.className =
+            "tag status " + (user.active === true ? "active" : "inactive");
+          status.textContent = user.active === true ? "Actif" : "Désactivé";
 
           const actions = document.createElement("div");
           actions.className = "user-actions";
 
-          // On ne propose aucune action sur les comptes administrateurs.
-          if (
-            user.role === "user" &&
-            user.id !== currentUser.id
-          ) {
+          if (user.role === "user" && user.id !== currentUser.id) {
+            const renameButton = document.createElement("button");
+            renameButton.type = "button";
+            renameButton.className = "rename-button";
+            renameButton.textContent = "Changer le nom";
+
+            renameButton.addEventListener("click", async () => {
+              const proposed = window.prompt(
+                `Nouveau nom d'utilisateur pour « ${user.username} » :`,
+                user.username
+              );
+
+              if (proposed === null) return;
+
+              const username = proposed.trim();
+
+              if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+                listMessage.textContent =
+                  "Nom invalide : 3 à 30 caractères (lettres, chiffres, point, tiret ou tiret bas).";
+                return;
+              }
+
+              if (
+                username.toLowerCase() === String(user.username).toLowerCase()
+              ) {
+                listMessage.textContent = "Le nom n'a pas changé.";
+                return;
+              }
+
+              renameButton.disabled = true;
+              listMessage.textContent = "Modification du nom en cours...";
+
+              try {
+                const result = await appelerFonction(
+                  "admin-update-username",
+                  { userId: user.id, username }
+                );
+
+                listMessage.textContent =
+                  result.message || "Nom d'utilisateur modifié.";
+
+                await chargerUtilisateurs();
+              } catch (error) {
+                listMessage.textContent =
+                  "Erreur : " + (error.message || "modification impossible.");
+                renameButton.disabled = false;
+              }
+            });
+
+            const passwordButton = document.createElement("button");
+            passwordButton.type = "button";
+            passwordButton.className = "password-button";
+            passwordButton.textContent = "Changer le mot de passe";
+
+            passwordButton.addEventListener("click", async () => {
+              const password = window.prompt(
+                `Nouveau mot de passe pour « ${user.username} » (10 caractères minimum) :`
+              );
+
+              if (password === null) return;
+
+              if (password.length < 10) {
+                listMessage.textContent =
+                  "Le mot de passe doit contenir au moins 10 caractères.";
+                return;
+              }
+
+              const confirmation = window.prompt(
+                "Confirme le nouveau mot de passe :"
+              );
+
+              if (confirmation === null) return;
+
+              if (password !== confirmation) {
+                listMessage.textContent =
+                  "Les deux mots de passe ne correspondent pas.";
+                return;
+              }
+
+              if (
+                !window.confirm(
+                  `Confirmer la réinitialisation du mot de passe de « ${user.username} » ?`
+                )
+              ) return;
+
+              passwordButton.disabled = true;
+              listMessage.textContent =
+                "Réinitialisation du mot de passe en cours...";
+
+              try {
+                const result = await appelerFonction(
+                  "admin-reset-password",
+                  { userId: user.id, password }
+                );
+
+                listMessage.textContent =
+                  result.message || "Mot de passe réinitialisé.";
+              } catch (error) {
+                listMessage.textContent =
+                  "Erreur : " +
+                  (error.message || "réinitialisation impossible.");
+              } finally {
+                passwordButton.disabled = false;
+              }
+            });
+
             const actionButton = document.createElement("button");
             actionButton.type = "button";
 
@@ -389,6 +431,7 @@
 
             actionButton.addEventListener("click", async () => {
               const newStatus = user.active !== true;
+
               const confirmation = newStatus
                 ? `Réactiver le compte « ${user.username} » ?`
                 : `Désactiver le compte « ${user.username} » ?`;
@@ -399,38 +442,23 @@
               listMessage.textContent = "Modification du compte en cours...";
 
               try {
-                const statusResponse = await fetch(
-                  `${SUPABASE_URL}/functions/v1/update-user-status`,
-                  {
-                    method: "POST",
-                    headers: headersAuth(),
-                    body: JSON.stringify({
-                      userId: user.id,
-                      active: newStatus
-                    })
-                  }
+                const result = await appelerFonction(
+                  "update-user-status",
+                  { userId: user.id, active: newStatus }
                 );
 
-                const statusResult = await statusResponse.json();
+                listMessage.textContent =
+                  result.message || "Statut du compte modifié.";
 
-                if (!statusResponse.ok || statusResult.success !== true) {
-                  throw new Error(
-                    statusResult.error ||
-                    "Impossible de modifier le compte."
-                  );
-                }
-
-                listMessage.textContent = statusResult.message;
                 await chargerUtilisateurs();
               } catch (error) {
                 listMessage.textContent =
-                  "Erreur : " +
-                  (error.message || "modification impossible.");
+                  "Erreur : " + (error.message || "modification impossible.");
                 actionButton.disabled = false;
               }
             });
 
-            actions.appendChild(actionButton);
+            actions.append(renameButton, passwordButton, actionButton);
           }
 
           row.append(name, role, status, actions);
@@ -454,7 +482,6 @@
 
       const username =
         document.getElementById("newUsername").value.trim();
-
       const password =
         document.getElementById("newPassword").value;
 
@@ -475,22 +502,10 @@
       afficherMessage("Création du compte en cours...");
 
       try {
-        const response = await fetch(
-          `${SUPABASE_URL}/functions/v1/create-user`,
-          {
-            method: "POST",
-            headers: headersAuth(),
-            body: JSON.stringify({ username, password })
-          }
+        const result = await appelerFonction(
+          "create-user",
+          { username, password }
         );
-
-        const result = await response.json();
-
-        if (!response.ok || result.success !== true) {
-          throw new Error(
-            result.error || "La création du compte a échoué."
-          );
-        }
 
         afficherMessage(
           `Le compte « ${result.user.username} » a été créé avec succès.`
@@ -512,9 +527,7 @@
 
     (async () => {
       const ok = await verifierSession();
-      if (ok) {
-        await chargerUtilisateurs();
-      }
+      if (ok) await chargerUtilisateurs();
     })();
   </script>
 </body>
