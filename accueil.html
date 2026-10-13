@@ -7,12 +7,14 @@
   <title>Mon espace privé</title>
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f5f9;
       color: #0f172a;
     }
+
     header {
       background: #0f172a;
       color: white;
@@ -23,8 +25,11 @@
       flex-wrap: wrap;
       gap: 12px;
     }
+
     header h1 { margin: 0; font-size: 22px; }
+
     button, input { font: inherit; }
+
     button {
       border: 0;
       border-radius: 8px;
@@ -32,9 +37,13 @@
       cursor: pointer;
       font-weight: bold;
     }
+
     button:disabled { opacity: .6; cursor: wait; }
+
     #logout { background: #ef4444; color: white; }
+
     main { max-width: 1000px; margin: 30px auto; padding: 0 16px; }
+
     .panel {
       background: white;
       border-radius: 14px;
@@ -42,15 +51,18 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 15px #0f172a0d;
     }
+
     .upload-row {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
     }
+
     #uploadButton { background: #2563eb; color: white; }
     #fileInput { max-width: 100%; padding: 8px 0; }
     #message { margin-top: 14px; overflow-wrap: anywhere; }
+
     .file-row {
       display: flex;
       align-items: center;
@@ -60,15 +72,18 @@
       padding: 14px 0;
       border-bottom: 1px solid #e2e8f0;
     }
+
     .file-name { overflow-wrap: anywhere; font-weight: bold; }
     .file-actions button { background: #e2e8f0; color: #0f172a; }
     .muted { color: #64748b; }
+
     @media (max-width: 500px) {
       .upload-row { align-items: stretch; flex-direction: column; }
       #uploadButton { width: 100%; }
     }
   </style>
 </head>
+
 <body>
   <header>
     <h1>🔐 Mon espace privé</h1>
@@ -98,7 +113,9 @@
 
     <section class="panel">
       <h2>📁 Documents communs</h2>
-      <p class="muted">Les fichiers déposés ici sont visibles par tous les utilisateurs actifs.</p>
+      <p class="muted">
+        Les fichiers déposés ici sont visibles par tous les utilisateurs actifs.
+      </p>
       <button id="refreshButton" type="button">Actualiser la liste</button>
       <div id="fileList" class="muted" style="margin-top:12px">
         Chargement des documents...
@@ -113,6 +130,9 @@
     let accessToken = sessionStorage.getItem("access_token");
     const refreshToken = sessionStorage.getItem("refresh_token");
     const userText = sessionStorage.getItem("user");
+
+    let currentUserId = null;
+    let currentUsername = "Utilisateur";
 
     const message = document.getElementById("message");
     const fileList = document.getElementById("fileList");
@@ -130,6 +150,40 @@
     function afficherMessage(texte, erreur = false) {
       message.style.color = erreur ? "#dc2626" : "#15803d";
       message.textContent = texte;
+    }
+
+    // Enregistrer une action dans l'historique
+    async function enregistrerAction(action, details = "") {
+      try {
+        if (!currentUserId || !accessToken) return;
+
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/historique_actions`,
+          {
+            method: "POST",
+            headers: {
+              ...headersAuth(),
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify({
+              user_id: currentUserId,
+              username: currentUsername,
+              action: action,
+              details: details
+            })
+          }
+        );
+
+        if (!response.ok) {
+          console.error(
+            "Impossible d'enregistrer l'action :",
+            await response.text()
+          );
+        }
+      } catch (error) {
+        console.error("Erreur historique :", error);
+      }
     }
 
     function nomFichierValide(nom) {
@@ -155,15 +209,26 @@
           return false;
         }
 
+        const authUser = await response.json();
         const user = JSON.parse(userText);
-        document.getElementById("username").textContent =
-          user.username || "Utilisateur";
+
+        currentUserId = authUser.id;
+        currentUsername = user.username || "Utilisateur";
+
+        document.getElementById("username").textContent = currentUsername;
         document.getElementById("role").textContent =
           user.role === "admin" ? "Administrateur" : "Utilisateur";
 
+        await enregistrerAction(
+          "Connexion",
+          "Connexion à l'espace privé"
+        );
+
         return true;
       } catch (error) {
-        fileList.textContent = "Impossible de vérifier la connexion. Recharge la page.";
+        console.error(error);
+        fileList.textContent =
+          "Impossible de vérifier la connexion. Recharge la page.";
         return false;
       }
     }
@@ -252,13 +317,21 @@
               const blob = await downloadResponse.blob();
               const url = URL.createObjectURL(blob);
               const link = document.createElement("a");
+
               link.href = url;
               link.download = file.name.split("/").pop();
               document.body.appendChild(link);
               link.click();
               link.remove();
+
               setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+              await enregistrerAction(
+                "Téléchargement",
+                file.name
+              );
             } catch (error) {
+              console.error(error);
               alert("Impossible de télécharger ce fichier.");
             } finally {
               downloadButton.disabled = false;
@@ -317,6 +390,9 @@
           return;
         }
 
+        // Enregistrer uniquement si l'envoi a réussi
+        await enregistrerAction("Ajout de fichier", file.name);
+
         afficherMessage("Fichier envoyé avec succès !");
         fileInput.value = "";
         await chargerDocuments();
@@ -337,6 +413,7 @@
 
     (async () => {
       const sessionOk = await verifierSession();
+
       if (sessionOk) {
         await chargerDocuments();
       }
