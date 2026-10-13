@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -42,7 +43,11 @@
 
     #logout { background: #ef4444; color: white; }
 
-    main { max-width: 1000px; margin: 30px auto; padding: 0 16px; }
+    main {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
 
     .panel {
       background: white;
@@ -77,8 +82,35 @@
     .file-actions button { background: #e2e8f0; color: #0f172a; }
     .muted { color: #64748b; }
 
+    /* Boutons d'accès rapide */
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .quick-button {
+      display: inline-block;
+      padding: 13px 18px;
+      border-radius: 9px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .quick-button:hover { background: #1d4ed8; }
+    .admin-button { background: #0f766e; }
+    .admin-button:hover { background: #115e59; }
+    .admin-button[hidden] { display: none; }
+
     @media (max-width: 500px) {
-      .upload-row { align-items: stretch; flex-direction: column; }
+      .upload-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
       #uploadButton { width: 100%; }
     }
   </style>
@@ -101,12 +133,31 @@
       </p>
     </section>
 
+    <!-- Les deux boutons d'accès -->
+    <section class="panel">
+      <h2>🚀 Accès rapides</h2>
+      <div class="quick-links">
+        <a href="messagerie.html" class="quick-button">
+          💬 Ouvrir la messagerie
+        </a>
+
+        <a href="admin.html" id="adminButton"
+           class="quick-button admin-button" hidden>
+          🛡️ Administration
+        </a>
+      </div>
+    </section>
+
     <section class="panel">
       <h2>📤 Ajouter un document</h2>
-      <p class="muted">Choisis un fichier sur ton appareil, puis envoie-le.</p>
+      <p class="muted">
+        Choisis un fichier sur ton appareil, puis envoie-le.
+      </p>
       <div class="upload-row">
         <input type="file" id="fileInput">
-        <button id="uploadButton" type="button">Envoyer le fichier</button>
+        <button id="uploadButton" type="button">
+          Envoyer le fichier
+        </button>
       </div>
       <div id="message" role="status" aria-live="polite"></div>
     </section>
@@ -116,7 +167,9 @@
       <p class="muted">
         Les fichiers déposés ici sont visibles par tous les utilisateurs actifs.
       </p>
-      <button id="refreshButton" type="button">Actualiser la liste</button>
+      <button id="refreshButton" type="button">
+        Actualiser la liste
+      </button>
       <div id="fileList" class="muted" style="margin-top:12px">
         Chargement des documents...
       </div>
@@ -218,6 +271,10 @@
         document.getElementById("username").textContent = currentUsername;
         document.getElementById("role").textContent =
           user.role === "admin" ? "Administrateur" : "Utilisateur";
+
+        // Le bouton Administration apparaît uniquement pour le rôle admin
+        document.getElementById("adminButton").hidden =
+          user.role !== "admin";
 
         await enregistrerAction(
           "Connexion",
