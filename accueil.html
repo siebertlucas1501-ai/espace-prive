@@ -50,7 +50,7 @@
       letter-spacing: -.5px;
     }
 
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
 
     button {
       border: 0;
@@ -58,13 +58,13 @@
       padding: 11px 16px;
       cursor: pointer;
       font-weight: 700;
-      transition: transform .15s ease, background .15s ease,
-        box-shadow .15s ease;
+      transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
     }
 
     button:hover { transform: translateY(-1px); }
 
-    button:focus-visible, a:focus-visible, input:focus-visible {
+    button:focus-visible, a:focus-visible,
+    input:focus-visible, select:focus-visible {
       outline: 3px solid rgba(49, 87, 213, .35);
       outline-offset: 3px;
     }
@@ -136,8 +136,7 @@
       text-align: center;
       font-weight: 750;
       box-shadow: 0 6px 16px rgba(49, 87, 213, .16);
-      transition: transform .15s ease, background .15s ease,
-        box-shadow .15s ease;
+      transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
     }
 
     .quick-button:hover {
@@ -186,6 +185,52 @@
       font-weight: 600;
     }
 
+    /* Recherche, catégories et tri */
+    .document-tools {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) minmax(170px, 1fr);
+      gap: 12px;
+      margin: 18px 0 12px;
+    }
+
+    .document-tools input,
+    .document-tools select {
+      width: 100%;
+      min-width: 0;
+      padding: 12px 13px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #f8faff;
+      color: var(--text);
+    }
+
+    .file-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .file-category {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: #edf2ff;
+      color: #2949b7;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .documents-count {
+      margin: 12px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .file-row {
       display: flex;
       align-items: center;
@@ -210,26 +255,22 @@
       header { align-items: stretch; }
       header h1 { font-size: 21px; }
       #logout { width: 100%; }
-
       main {
         width: min(100% - 22px, 1040px);
         margin-top: 18px;
       }
-
       .panel {
         border-radius: 15px;
         padding: 18px;
         margin-bottom: 14px;
       }
-
+      .document-tools { grid-template-columns: 1fr; }
       .quick-links { grid-template-columns: 1fr; }
       .quick-button { width: 100%; }
-
       .upload-row {
         align-items: stretch;
         flex-direction: column;
       }
-
       #uploadButton, #refreshButton { width: 100%; }
       #fileInput { width: 100%; flex-basis: auto; }
       .file-row { align-items: stretch; }
@@ -268,7 +309,6 @@
         <a href="messagerie.html" class="quick-button">
           💬 Ouvrir la messagerie
         </a>
-
         <a href="admin.html" id="adminButton"
            class="quick-button admin-button" hidden>
           🛡️ Administration
@@ -278,14 +318,10 @@
 
     <section class="panel">
       <h2>📤 Ajouter un document</h2>
-      <p class="muted">
-        Choisis un fichier sur ton appareil, puis envoie-le.
-      </p>
+      <p class="muted">Choisis un fichier sur ton appareil, puis envoie-le.</p>
       <div class="upload-row">
         <input type="file" id="fileInput">
-        <button id="uploadButton" type="button">
-          Envoyer le fichier
-        </button>
+        <button id="uploadButton" type="button">Envoyer le fichier</button>
       </div>
       <div id="message" role="status" aria-live="polite"></div>
     </section>
@@ -295,9 +331,32 @@
       <p class="muted">
         Les fichiers déposés ici sont visibles par tous les utilisateurs actifs.
       </p>
-      <button id="refreshButton" type="button">
-        Actualiser la liste
-      </button>
+
+      <div class="document-tools">
+        <input id="searchDocuments" type="search"
+               placeholder="🔎 Rechercher un document..."
+               aria-label="Rechercher un document">
+
+        <select id="categoryFilter" aria-label="Filtrer par catégorie">
+          <option value="tous">Toutes les catégories</option>
+          <option value="documents">Documents</option>
+          <option value="images">Images</option>
+          <option value="videos">Vidéos</option>
+          <option value="audio">Audio</option>
+          <option value="archives">Archives</option>
+          <option value="autres">Autres fichiers</option>
+        </select>
+
+        <select id="sortDocuments" aria-label="Trier les documents">
+          <option value="nom-asc">Nom : A → Z</option>
+          <option value="nom-desc">Nom : Z → A</option>
+          <option value="recent">Plus récents d'abord</option>
+          <option value="ancien">Plus anciens d'abord</option>
+        </select>
+      </div>
+
+      <div id="documentsCount" class="documents-count"></div>
+      <button id="refreshButton" type="button">Actualiser la liste</button>
       <div id="fileList" class="muted" style="margin-top:12px">
         Chargement des documents...
       </div>
@@ -320,6 +379,12 @@
     const fileInput = document.getElementById("fileInput");
     const uploadButton = document.getElementById("uploadButton");
     const refreshButton = document.getElementById("refreshButton");
+    const searchDocuments = document.getElementById("searchDocuments");
+    const categoryFilter = document.getElementById("categoryFilter");
+    const sortDocuments = document.getElementById("sortDocuments");
+    const documentsCount = document.getElementById("documentsCount");
+
+    let documentsEnMemoire = [];
 
     function headersAuth() {
       return {
@@ -329,16 +394,43 @@
     }
 
     function afficherMessage(texte, erreur = false) {
-      message.style.color = erreur ? "#dc2626" : "#15803d";
       message.textContent = texte;
+      message.style.color = erreur ? "#dc2626" : "#087f72";
     }
 
-    // Enregistrer une action dans l'historique
-    async function enregistrerAction(action, details = "") {
-      try {
-        if (!currentUserId || !accessToken) return;
+    async function renouvelerSession() {
+      if (!refreshToken) return false;
 
+      try {
         const response = await fetch(
+          `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+          {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ refresh_token: refreshToken })
+          }
+        );
+
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        accessToken = data.access_token;
+
+        sessionStorage.setItem("access_token", data.access_token);
+        sessionStorage.setItem("refresh_token", data.refresh_token);
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    async function enregistrerAction(action, details) {
+      try {
+        let response = await fetch(
           `${SUPABASE_URL}/rest/v1/historique_actions`,
           {
             method: "POST",
@@ -348,13 +440,31 @@
               "Prefer": "return=minimal"
             },
             body: JSON.stringify({
-              user_id: currentUserId,
-              username: currentUsername,
+              utilisateur_id: currentUserId,
               action: action,
               details: details
             })
           }
         );
+
+        if (response.status === 401 && await renouvelerSession()) {
+          response = await fetch(
+            `${SUPABASE_URL}/rest/v1/historique_actions`,
+            {
+              method: "POST",
+              headers: {
+                ...headersAuth(),
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                utilisateur_id: currentUserId,
+                action: action,
+                details: details
+              })
+            }
+          );
+        }
 
         if (!response.ok) {
           console.error(
@@ -448,89 +558,177 @@
           return;
         }
 
-        fileList.replaceChildren();
-
-        const files = result.filter(item =>
+        documentsEnMemoire = result.filter(item =>
           item &&
           nomFichierValide(item.name) &&
           item.id !== null &&
           item.metadata !== null
         );
 
-        if (files.length === 0) {
-          fileList.textContent = "Aucun document pour le moment.";
-          fileList.className = "muted";
-          return;
-        }
-
-        fileList.className = "";
-
-        for (const file of files) {
-          const row = document.createElement("div");
-          row.className = "file-row";
-
-          const name = document.createElement("span");
-          name.className = "file-name";
-          name.textContent = file.name;
-
-          const actions = document.createElement("div");
-          actions.className = "file-actions";
-
-          const downloadButton = document.createElement("button");
-          downloadButton.type = "button";
-          downloadButton.textContent = "Télécharger";
-
-          downloadButton.addEventListener("click", async () => {
-            downloadButton.disabled = true;
-
-            try {
-              const encodedPath = file.name
-                .split("/")
-                .map(encodeURIComponent)
-                .join("/");
-
-              const downloadResponse = await fetch(
-                `${SUPABASE_URL}/storage/v1/object/authenticated/documents-prives/${encodedPath}`,
-                { headers: headersAuth() }
-              );
-
-              if (!downloadResponse.ok) {
-                throw new Error("Téléchargement impossible.");
-              }
-
-              const blob = await downloadResponse.blob();
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement("a");
-
-              link.href = url;
-              link.download = file.name.split("/").pop();
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-              await enregistrerAction(
-                "Téléchargement",
-                file.name
-              );
-            } catch (error) {
-              console.error(error);
-              alert("Impossible de télécharger ce fichier.");
-            } finally {
-              downloadButton.disabled = false;
-            }
-          });
-
-          actions.appendChild(downloadButton);
-          row.append(name, actions);
-          fileList.appendChild(row);
-        }
+        afficherDocuments();
       } catch (error) {
         console.error(error);
         fileList.textContent = "Erreur de connexion au stockage.";
       } finally {
         refreshButton.disabled = false;
+      }
+    }
+
+    function categorieFichier(nom) {
+      const extension = nom.includes(".")
+        ? nom.split(".").pop().toLowerCase()
+        : "";
+
+      if (["pdf", "doc", "docx", "odt", "txt", "rtf", "xls", "xlsx", "ods", "csv", "ppt", "pptx", "odp"].includes(extension)) {
+        return { id: "documents", label: "Document" };
+      }
+
+      if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic"].includes(extension)) {
+        return { id: "images", label: "Image" };
+      }
+
+      if (["mp4", "mov", "avi", "mkv", "webm", "mpeg", "mpg"].includes(extension)) {
+        return { id: "videos", label: "Vidéo" };
+      }
+
+      if (["mp3", "wav", "ogg", "m4a", "flac", "aac"].includes(extension)) {
+        return { id: "audio", label: "Audio" };
+      }
+
+      if (["zip", "rar", "7z", "tar", "gz"].includes(extension)) {
+        return { id: "archives", label: "Archive" };
+      }
+
+      return { id: "autres", label: "Autre fichier" };
+    }
+
+    function afficherDocuments() {
+      fileList.replaceChildren();
+
+      const recherche = searchDocuments.value.trim().toLocaleLowerCase("fr");
+      const categorie = categoryFilter.value;
+      const tri = sortDocuments.value;
+
+      const files = documentsEnMemoire.filter(file => {
+        const nom = file.name.toLocaleLowerCase("fr");
+        const categorieId = categorieFichier(file.name).id;
+
+        return nom.includes(recherche) &&
+          (categorie === "tous" || categorieId === categorie);
+      });
+
+      files.sort((a, b) => {
+        if (tri === "nom-asc") {
+          return a.name.localeCompare(
+            b.name, "fr", { sensitivity: "base" }
+          );
+        }
+
+        if (tri === "nom-desc") {
+          return b.name.localeCompare(
+            a.name, "fr", { sensitivity: "base" }
+          );
+        }
+
+        const dateA = a.created_at ? Date.parse(a.created_at) : 0;
+        const dateB = b.created_at ? Date.parse(b.created_at) : 0;
+
+        return tri === "recent" ? dateB - dateA : dateA - dateB;
+      });
+
+      documentsCount.textContent =
+        `${files.length} document(s) affiché(s) sur ${documentsEnMemoire.length}`;
+
+      if (documentsEnMemoire.length === 0) {
+        fileList.textContent = "Aucun document pour le moment.";
+        fileList.className = "muted";
+        return;
+      }
+
+      if (files.length === 0) {
+        fileList.textContent =
+          "Aucun document ne correspond à ta recherche.";
+        fileList.className = "muted";
+        return;
+      }
+
+      fileList.className = "";
+
+      for (const file of files) {
+        const row = document.createElement("div");
+        row.className = "file-row";
+
+        const nameBlock = document.createElement("div");
+        const name = document.createElement("div");
+        name.className = "file-name";
+        name.textContent = file.name;
+
+        const meta = document.createElement("div");
+        meta.className = "file-meta";
+
+        const categoryBadge = document.createElement("span");
+        categoryBadge.className = "file-category";
+        categoryBadge.textContent = categorieFichier(file.name).label;
+        meta.appendChild(categoryBadge);
+
+        if (file.created_at) {
+          const date = document.createElement("span");
+          date.textContent =
+            new Date(file.created_at).toLocaleDateString("fr-FR");
+          meta.appendChild(date);
+        }
+
+        nameBlock.append(name, meta);
+
+        const actions = document.createElement("div");
+        actions.className = "file-actions";
+
+        const downloadButton = document.createElement("button");
+        downloadButton.type = "button";
+        downloadButton.textContent = "Télécharger";
+
+        downloadButton.addEventListener("click", async () => {
+          downloadButton.disabled = true;
+
+          try {
+            const encodedPath = file.name
+              .split("/")
+              .map(encodeURIComponent)
+              .join("/");
+
+            const downloadResponse = await fetch(
+              `${SUPABASE_URL}/storage/v1/object/authenticated/documents-prives/${encodedPath}`,
+              { headers: headersAuth() }
+            );
+
+            if (!downloadResponse.ok) {
+              throw new Error("Téléchargement impossible.");
+            }
+
+            const blob = await downloadResponse.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = file.name.split("/").pop();
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            await enregistrerAction("Téléchargement", file.name);
+          } catch (error) {
+            console.error(error);
+            alert("Impossible de télécharger ce fichier.");
+          } finally {
+            downloadButton.disabled = false;
+          }
+        });
+
+        actions.appendChild(downloadButton);
+        row.append(nameBlock, actions);
+        fileList.appendChild(row);
       }
     }
 
@@ -588,6 +786,9 @@
     });
 
     refreshButton.addEventListener("click", chargerDocuments);
+    searchDocuments.addEventListener("input", afficherDocuments);
+    categoryFilter.addEventListener("change", afficherDocuments);
+    sortDocuments.addEventListener("change", afficherDocuments);
 
     document.getElementById("logout").addEventListener("click", () => {
       sessionStorage.clear();
