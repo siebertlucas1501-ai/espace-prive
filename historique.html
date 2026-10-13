@@ -1,0 +1,622 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historique - Espace privé</title>
+
+  <style>
+    :root {
+      --bg: #f3f6fc;
+      --surface: #fff;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #3157d5;
+      --border: #e4eaf4;
+      --danger: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 18px clamp(16px, 4vw, 40px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 23px;
+      margin: 0;
+    }
+
+    main {
+      width: min(1200px, calc(100% - 28px));
+      margin: 28px auto;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      padding: clamp(17px, 3vw, 26px);
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(22, 34, 66, .06);
+    }
+
+    h2 { margin: 0 0 8px; }
+
+    .muted { color: var(--muted); }
+
+    button, input, select { font: inherit; }
+
+    button, .link-button {
+      display: inline-block;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    button:hover, .link-button:hover { filter: brightness(.93); }
+
+    .secondary {
+      background: #e8edff;
+      color: #2949b7;
+    }
+
+    .danger { background: var(--danger); }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .filters input, .filters select {
+      width: 100%;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8faff;
+      color: var(--text);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #status {
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 13px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #f8faff;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    td { font-size: 14px; }
+
+    .action-badge {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #edf2ff;
+      color: #2949b7;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    #count {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 700px) {
+      .filters { grid-template-columns: 1fr; }
+      header h1 { font-size: 20px; }
+      .pagination button { flex: 1; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>📋 Historique des actions</h1>
+    <a class="link-button secondary" href="accueil.html">
+      ← Retour à l'accueil
+    </a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Administration — Historique</h2>
+      <p class="muted">
+        Consulte les connexions et les actions effectuées dans l'espace privé.
+        Cet historique est consultable par l'administrateur.
+      </p>
+
+      <div class="toolbar">
+        <div id="count">Chargement de l'historique...</div>
+        <button id="refreshButton" type="button">Actualiser</button>
+      </div>
+
+      <div class="filters">
+        <input id="searchInput" type="search"
+               placeholder="🔎 Rechercher un utilisateur, une action..."
+               aria-label="Rechercher dans l'historique">
+
+        <select id="actionFilter" aria-label="Filtrer par action">
+          <option value="">Toutes les actions</option>
+        </select>
+
+        <select id="sortFilter" aria-label="Ordre de tri">
+          <option value="recent">Plus récentes d'abord</option>
+          <option value="ancien">Plus anciennes d'abord</option>
+        </select>
+      </div>
+
+      <div id="status" role="status" aria-live="polite">
+        Vérification des droits d'accès...
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date et heure</th>
+              <th>Utilisateur</th>
+              <th>Action</th>
+              <th>Détails</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr>
+              <td colspan="4">Chargement...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <button id="previousButton" class="secondary" type="button">
+          ← Précédent
+        </button>
+        <span id="pageInfo">Page 1</span>
+        <button id="nextButton" class="secondary" type="button">
+          Suivant →
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+    const statusBox = document.getElementById("status");
+    const historyBody = document.getElementById("historyBody");
+    const countBox = document.getElementById("count");
+    const searchInput = document.getElementById("searchInput");
+    const actionFilter = document.getElementById("actionFilter");
+    const sortFilter = document.getElementById("sortFilter");
+    const previousButton = document.getElementById("previousButton");
+    const nextButton = document.getElementById("nextButton");
+    const refreshButton = document.getElementById("refreshButton");
+
+    const PAGE_SIZE = 25;
+    let currentPage = 0;
+    let allActions = [];
+    let usernames = {};
+
+    let accessToken = sessionStorage.getItem("access_token");
+    let refreshToken = sessionStorage.getItem("refresh_token");
+
+    function headersAuth() {
+      return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${accessToken}`
+      };
+    }
+
+    function afficherStatut(texte, erreur = false) {
+      statusBox.textContent = texte;
+      statusBox.style.color = erreur ? "#dc2626" : "#087f72";
+    }
+
+    async function renouvelerSession() {
+      if (!refreshToken) return false;
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+          {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ refresh_token: refreshToken })
+          }
+        );
+
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        accessToken = data.access_token;
+        refreshToken = data.refresh_token;
+
+        sessionStorage.setItem("access_token", accessToken);
+        sessionStorage.setItem("refresh_token", refreshToken);
+
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    async function requeteAvecSession(url, options = {}) {
+      let response = await fetch(url, {
+        ...options,
+        headers: {
+          ...headersAuth(),
+          ...(options.headers || {})
+        }
+      });
+
+      if (response.status === 401 && await renouvelerSession()) {
+        response = await fetch(url, {
+          ...options,
+          headers: {
+            ...headersAuth(),
+            ...(options.headers || {})
+          }
+        });
+      }
+
+      return response;
+    }
+
+    async function verifierAdministrateur() {
+      if (!accessToken || !refreshToken) {
+        window.location.replace("index.html");
+        return false;
+      }
+
+      try {
+        const authResponse = await requeteAvecSession(
+          `${SUPABASE_URL}/auth/v1/user`
+        );
+
+        if (!authResponse.ok) {
+          sessionStorage.clear();
+          window.location.replace("index.html");
+          return false;
+        }
+
+        const authUser = await authResponse.json();
+
+        // Vérification du rôle à partir de la base, pas seulement
+        // du rôle éventuellement enregistré dans le navigateur.
+        const profileUrl =
+          `${SUPABASE_URL}/rest/v1/profiles` +
+          `?id=eq.${encodeURIComponent(authUser.id)}` +
+          `&select=id,username,role,active`;
+
+        const profileResponse = await requeteAvecSession(profileUrl);
+
+        if (!profileResponse.ok) {
+          throw new Error("Impossible de vérifier le profil.");
+        }
+
+        const profiles = await profileResponse.json();
+        const profile = profiles[0];
+
+        if (!profile || profile.role !== "admin" || profile.active !== true) {
+          afficherStatut(
+            "Accès refusé : cette page est réservée à l'administrateur.",
+            true
+          );
+          historyBody.replaceChildren();
+          sessionStorage.removeItem("access_token");
+          sessionStorage.removeItem("refresh_token");
+          sessionStorage.removeItem("user");
+          setTimeout(() => window.location.replace("accueil.html"), 1800);
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error(error);
+        afficherStatut(
+          "Impossible de vérifier les droits. Vérifie la connexion et les autorisations Supabase.",
+          true
+        );
+        return false;
+      }
+    }
+
+    function formaterDate(dateTexte) {
+      if (!dateTexte) return "Date inconnue";
+
+      const date = new Date(dateTexte);
+
+      if (Number.isNaN(date.getTime())) return "Date inconnue";
+
+      return date.toLocaleString("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "medium"
+      });
+    }
+
+    function valeurTexte(valeur) {
+      if (valeur === null || valeur === undefined || valeur === "") {
+        return "—";
+      }
+
+      if (typeof valeur === "object") {
+        return JSON.stringify(valeur);
+      }
+
+      return String(valeur);
+    }
+
+    async function chargerNomsUtilisateurs() {
+      const response = await requeteAvecSession(
+        `${SUPABASE_URL}/rest/v1/profiles?select=id,username`
+      );
+
+      if (!response.ok) {
+        console.warn("Les noms des utilisateurs n'ont pas pu être chargés.");
+        return;
+      }
+
+      const profiles = await response.json();
+
+      usernames = {};
+      for (const profile of profiles) {
+        usernames[profile.id] = profile.username || profile.id;
+      }
+    }
+
+    async function chargerHistorique() {
+      refreshButton.disabled = true;
+      afficherStatut("Chargement de l'historique...");
+      historyBody.replaceChildren();
+
+      try {
+        await chargerNomsUtilisateurs();
+
+        const url =
+          `${SUPABASE_URL}/rest/v1/historique_actions` +
+          `?select=*&order=created_at.desc&limit=1000`;
+
+        const response = await requeteAvecSession(url);
+
+        if (!response.ok) {
+          const erreur = await response.text();
+          console.error(erreur);
+          throw new Error(
+            "Impossible de lire l'historique. Vérifie les politiques RLS de Supabase."
+          );
+        }
+
+        const data = await response.json();
+
+        allActions = Array.isArray(data) ? data : [];
+
+        const actionsUniques = [...new Set(
+          allActions.map(item => item.action).filter(Boolean)
+        )];
+
+        actionFilter.replaceChildren();
+
+        const allOption = document.createElement("option");
+        allOption.value = "";
+        allOption.textContent = "Toutes les actions";
+        actionFilter.appendChild(allOption);
+
+        for (const action of actionsUniques.sort((a, b) =>
+          String(a).localeCompare(String(b), "fr")
+        )) {
+          const option = document.createElement("option");
+          option.value = action;
+          option.textContent = action;
+          actionFilter.appendChild(option);
+        }
+
+        currentPage = 0;
+        afficherHistorique();
+        afficherStatut("Historique chargé.");
+      } catch (error) {
+        console.error(error);
+        afficherStatut(error.message || "Une erreur est survenue.", true);
+        historyBody.replaceChildren();
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.textContent = "Aucune donnée ne peut être affichée.";
+        row.appendChild(cell);
+        historyBody.appendChild(row);
+
+        countBox.textContent = "";
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    function afficherHistorique() {
+      const recherche = searchInput.value.trim().toLocaleLowerCase("fr");
+      const actionChoisie = actionFilter.value;
+      const ordre = sortFilter.value;
+
+      const filtered = allActions.filter(item => {
+        const username =
+          usernames[item.utilisateur_id] || item.utilisateur_id || "";
+
+        const contenu = [
+          username,
+          item.utilisateur_id,
+          item.action,
+          item.details,
+          item.created_at
+        ].map(valeurTexte).join(" ").toLocaleLowerCase("fr");
+
+        return contenu.includes(recherche) &&
+          (!actionChoisie || item.action === actionChoisie);
+      });
+
+      filtered.sort((a, b) => {
+        const dateA = a.created_at ? Date.parse(a.created_at) : 0;
+        const dateB = b.created_at ? Date.parse(b.created_at) : 0;
+        return ordre === "recent" ? dateB - dateA : dateA - dateB;
+      });
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      currentPage = Math.min(currentPage, totalPages - 1);
+
+      const debut = currentPage * PAGE_SIZE;
+      const pageActions = filtered.slice(debut, debut + PAGE_SIZE);
+
+      historyBody.replaceChildren();
+
+      if (pageActions.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.textContent = "Aucune action ne correspond à la recherche.";
+        row.appendChild(cell);
+        historyBody.appendChild(row);
+      }
+
+      for (const item of pageActions) {
+        const row = document.createElement("tr");
+
+        const dateCell = document.createElement("td");
+        dateCell.textContent = formaterDate(item.created_at);
+
+        const userCell = document.createElement("td");
+        userCell.textContent =
+          usernames[item.utilisateur_id] ||
+          item.utilisateur_id ||
+          "Utilisateur inconnu";
+
+        const actionCell = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "action-badge";
+        badge.textContent = valeurTexte(item.action);
+        actionCell.appendChild(badge);
+
+        const detailsCell = document.createElement("td");
+        detailsCell.textContent = valeurTexte(item.details);
+
+        row.append(dateCell, userCell, actionCell, detailsCell);
+        historyBody.appendChild(row);
+      }
+
+      countBox.textContent =
+        `${filtered.length} action(s) trouvée(s) — ${allActions.length} chargée(s)`;
+
+      document.getElementById("pageInfo").textContent =
+        `Page ${currentPage + 1} sur ${totalPages}`;
+
+      previousButton.disabled = currentPage === 0;
+      nextButton.disabled = currentPage >= totalPages - 1;
+    }
+
+    searchInput.addEventListener("input", () => {
+      currentPage = 0;
+      afficherHistorique();
+    });
+
+    actionFilter.addEventListener("change", () => {
+      currentPage = 0;
+      afficherHistorique();
+    });
+
+    sortFilter.addEventListener("change", afficherHistorique);
+
+    previousButton.addEventListener("click", () => {
+      if (currentPage > 0) {
+        currentPage--;
+        afficherHistorique();
+      }
+    });
+
+    nextButton.addEventListener("click", () => {
+      currentPage++;
+      afficherHistorique();
+    });
+
+    refreshButton.addEventListener("click", chargerHistorique);
+
+    (async () => {
+      const autorise = await verifierAdministrateur();
+
+      if (autorise) {
+        await chargerHistorique();
+      }
+    })();
+  </script>
+</body>
+</html>
