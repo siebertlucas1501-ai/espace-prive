@@ -1,0 +1,622 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Annonces - Espace privé</title>
+
+  <style>
+    :root {
+      --bg: #f3f6fc;
+      --surface: #fff;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #3157d5;
+      --border: #e4eaf4;
+      --green: #087f72;
+      --red: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    header {
+      padding: 18px clamp(16px, 4vw, 40px);
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    header h1 { margin: 0; font-size: 23px; }
+
+    main {
+      width: min(100% - 28px, 950px);
+      margin: 28px auto 50px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      padding: clamp(17px, 3vw, 26px);
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(22, 34, 66, .06);
+    }
+
+    h2 { margin: 0 0 8px; }
+    .muted { color: var(--muted); }
+
+    button, input, textarea { font: inherit; }
+
+    button, .link-button {
+      display: inline-block;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    button:hover, .link-button:hover { filter: brightness(.94); }
+    button:disabled { opacity: .6; cursor: wait; }
+
+    .secondary { background: #e8edff; color: #2949b7; }
+    .green { background: var(--green); }
+    .red { background: var(--red); }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin: 15px 0 6px;
+    }
+
+    input, textarea {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fbfcff;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    #status {
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .announcement {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .announcement:last-child { border-bottom: 0; }
+
+    .announcement h3 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      overflow-wrap: anywhere;
+    }
+
+    .announcement-date {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .announcement-content {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .announcement-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .announcement-actions button { font-size: 14px; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 560px) {
+      header h1 { font-size: 20px; }
+      header .link-button { width: 100%; text-align: center; }
+      main { width: calc(100% - 20px); margin-top: 15px; }
+      .panel { padding: 17px; }
+      .form-actions button { flex: 1; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>📢 Annonces</h1>
+    <a href="accueil.html" class="link-button secondary">
+      ← Retour à l'accueil
+    </a>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Bienvenue dans les annonces</h2>
+      <p class="muted">
+        Consulte les informations publiées dans l'espace privé.
+      </p>
+      <div id="status" role="status" aria-live="polite">
+        Vérification de la connexion...
+      </div>
+    </section>
+
+    <section id="adminPanel" class="panel hidden">
+      <h2 id="formTitle">✏️ Publier une annonce</h2>
+      <p class="muted">
+        Ce formulaire est réservé à l'administrateur.
+      </p>
+
+      <form id="announcementForm">
+        <label for="titleInput">Titre de l'annonce</label>
+        <input id="titleInput" maxlength="150" required
+               placeholder="Ex. : Information importante">
+
+        <label for="contentInput">Contenu</label>
+        <textarea id="contentInput" maxlength="10000" required
+                  placeholder="Écris ton annonce ici..."></textarea>
+
+        <div class="form-actions">
+          <button id="saveButton" type="submit" class="green">
+            Publier l'annonce
+          </button>
+          <button id="cancelButton" type="button"
+                  class="secondary hidden">
+            Annuler la modification
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2>📰 Toutes les annonces</h2>
+          <div id="announcementCount" class="muted">
+            Chargement...
+          </div>
+        </div>
+        <button id="refreshButton" type="button" class="secondary">
+          Actualiser
+        </button>
+      </div>
+
+      <div id="announcementList">
+        <p class="muted">Chargement des annonces...</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+    let accessToken = sessionStorage.getItem("access_token");
+    let refreshToken = sessionStorage.getItem("refresh_token");
+    let currentUserId = null;
+    let isAdmin = false;
+    let editingId = null;
+    let announcements = [];
+
+    const statusBox = document.getElementById("status");
+    const adminPanel = document.getElementById("adminPanel");
+    const form = document.getElementById("announcementForm");
+    const titleInput = document.getElementById("titleInput");
+    const contentInput = document.getElementById("contentInput");
+    const saveButton = document.getElementById("saveButton");
+    const cancelButton = document.getElementById("cancelButton");
+    const announcementList = document.getElementById("announcementList");
+    const announcementCount = document.getElementById("announcementCount");
+    const refreshButton = document.getElementById("refreshButton");
+
+    function setStatus(text, error = false) {
+      statusBox.textContent = text;
+      statusBox.style.color = error ? "#dc2626" : "#087f72";
+    }
+
+    function authHeaders() {
+      return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${accessToken}`
+      };
+    }
+
+    async function refreshSession() {
+      if (!refreshToken) return false;
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+          {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ refresh_token: refreshToken })
+          }
+        );
+
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        accessToken = data.access_token;
+        refreshToken = data.refresh_token;
+
+        sessionStorage.setItem("access_token", accessToken);
+        sessionStorage.setItem("refresh_token", refreshToken);
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    }
+
+    async function apiFetch(url, options = {}) {
+      const makeRequest = () => fetch(url, {
+        ...options,
+        headers: {
+          ...authHeaders(),
+          ...(options.headers || {})
+        }
+      });
+
+      let response = await makeRequest();
+
+      if (response.status === 401 && await refreshSession()) {
+        response = await makeRequest();
+      }
+
+      return response;
+    }
+
+    function formatDate(dateText) {
+      if (!dateText) return "Date inconnue";
+
+      const date = new Date(dateText);
+      if (Number.isNaN(date.getTime())) return "Date inconnue";
+
+      return date.toLocaleString("fr-FR", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+    }
+
+    async function checkAccess() {
+      if (!accessToken || !refreshToken) {
+        window.location.replace("index.html");
+        return false;
+      }
+
+      try {
+        const authResponse = await apiFetch(
+          `${SUPABASE_URL}/auth/v1/user`
+        );
+
+        if (!authResponse.ok) {
+          sessionStorage.clear();
+          window.location.replace("index.html");
+          return false;
+        }
+
+        const authUser = await authResponse.json();
+        currentUserId = authUser.id;
+
+        const profileUrl =
+          `${SUPABASE_URL}/rest/v1/profiles` +
+          `?id=eq.${encodeURIComponent(currentUserId)}` +
+          `&select=id,username,role,active`;
+
+        const profileResponse = await apiFetch(profileUrl);
+
+        if (!profileResponse.ok) {
+          throw new Error("Impossible de vérifier ton profil.");
+        }
+
+        const profiles = await profileResponse.json();
+        const profile = profiles[0];
+
+        if (!profile || profile.active !== true) {
+          sessionStorage.clear();
+          window.location.replace("index.html");
+          return false;
+        }
+
+        isAdmin = profile.role === "admin";
+        adminPanel.classList.toggle("hidden", !isAdmin);
+
+        setStatus(
+          isAdmin
+            ? `Connecté en tant qu'administrateur (${profile.username}).`
+            : `Connecté en tant que ${profile.username || "utilisateur"}.`
+        );
+
+        return true;
+      } catch (error) {
+        console.error(error);
+        setStatus(
+          "Impossible de vérifier les droits. Vérifie Supabase.",
+          true
+        );
+        return false;
+      }
+    }
+
+    async function loadAnnouncements() {
+      refreshButton.disabled = true;
+      announcementList.replaceChildren();
+      announcementCount.textContent = "Chargement...";
+
+      try {
+        const response = await apiFetch(
+          `${SUPABASE_URL}/rest/v1/annonces` +
+          `?select=id,titre,contenu,created_by,created_at,updated_at` +
+          `&order=created_at.desc&limit=500`
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(errorText);
+          throw new Error(
+            "Impossible de charger les annonces. Vérifie les politiques RLS."
+          );
+        }
+
+        announcements = await response.json();
+        renderAnnouncements();
+      } catch (error) {
+        console.error(error);
+        announcementCount.textContent = "";
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "muted";
+        errorMessage.textContent = error.message;
+        announcementList.appendChild(errorMessage);
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    function renderAnnouncements() {
+      announcementList.replaceChildren();
+
+      announcementCount.textContent =
+        `${announcements.length} annonce(s)`;
+
+      if (announcements.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "Aucune annonce pour le moment.";
+        announcementList.appendChild(empty);
+        return;
+      }
+
+      for (const item of announcements) {
+        const article = document.createElement("article");
+        article.className = "announcement";
+
+        const title = document.createElement("h3");
+        title.textContent = item.titre;
+
+        const date = document.createElement("div");
+        date.className = "announcement-date";
+        date.textContent = `Publié le ${formatDate(item.created_at)}`;
+
+        if (
+          item.updated_at &&
+          item.created_at &&
+          Date.parse(item.updated_at) - Date.parse(item.created_at) > 1000
+        ) {
+          date.textContent += ` · Modifié le ${formatDate(item.updated_at)}`;
+        }
+
+        const content = document.createElement("div");
+        content.className = "announcement-content";
+        content.textContent = item.contenu;
+
+        article.append(title, date, content);
+
+        if (isAdmin) {
+          const actions = document.createElement("div");
+          actions.className = "announcement-actions";
+
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = "secondary";
+          editButton.textContent = "Modifier";
+          editButton.addEventListener("click", () => startEdit(item));
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "red";
+          deleteButton.textContent = "Supprimer";
+          deleteButton.addEventListener("click", () => deleteAnnouncement(item));
+
+          actions.append(editButton, deleteButton);
+          article.appendChild(actions);
+        }
+
+        announcementList.appendChild(article);
+      }
+    }
+
+    function startEdit(item) {
+      if (!isAdmin) return;
+
+      editingId = item.id;
+      titleInput.value = item.titre;
+      contentInput.value = item.contenu;
+
+      document.getElementById("formTitle").textContent =
+        "✏️ Modifier l'annonce";
+
+      saveButton.textContent = "Enregistrer les modifications";
+      cancelButton.classList.remove("hidden");
+
+      adminPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      titleInput.focus();
+    }
+
+    function resetForm() {
+      editingId = null;
+      form.reset();
+
+      document.getElementById("formTitle").textContent =
+        "✏️ Publier une annonce";
+
+      saveButton.textContent = "Publier l'annonce";
+      cancelButton.classList.add("hidden");
+    }
+
+    cancelButton.addEventListener("click", resetForm);
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      if (!isAdmin || !currentUserId) {
+        setStatus("Action réservée à l'administrateur.", true);
+        return;
+      }
+
+      const titre = titleInput.value.trim();
+      const contenu = contentInput.value.trim();
+
+      if (!titre || !contenu) {
+        setStatus("Remplis le titre et le contenu.", true);
+        return;
+      }
+
+      saveButton.disabled = true;
+
+      try {
+        const editing = Boolean(editingId);
+        const url = editing
+          ? `${SUPABASE_URL}/rest/v1/annonces?id=eq.${encodeURIComponent(editingId)}`
+          : `${SUPABASE_URL}/rest/v1/annonces`;
+
+        const payload = editing
+          ? {
+              titre,
+              contenu,
+              updated_at: new Date().toISOString()
+            }
+          : {
+              titre,
+              contenu,
+              created_by: currentUserId
+            };
+
+        const response = await apiFetch(url, {
+          method: editing ? "PATCH" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(errorText);
+          throw new Error(
+            "Enregistrement impossible. Vérifie les autorisations Supabase."
+          );
+        }
+
+        resetForm();
+        setStatus(editing
+          ? "Annonce modifiée avec succès."
+          : "Annonce publiée avec succès."
+        );
+
+        await loadAnnouncements();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "Une erreur est survenue.", true);
+      } finally {
+        saveButton.disabled = false;
+      }
+    });
+
+    async function deleteAnnouncement(item) {
+      if (!isAdmin) return;
+
+      const confirmed = confirm(
+        `Supprimer définitivement l'annonce « ${item.titre} » ?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        const response = await apiFetch(
+          `${SUPABASE_URL}/rest/v1/annonces?id=eq.${encodeURIComponent(item.id)}`,
+          { method: "DELETE" }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(errorText);
+          throw new Error("La suppression a échoué.");
+        }
+
+        if (editingId === item.id) resetForm();
+
+        setStatus("Annonce supprimée.");
+        await loadAnnouncements();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "Une erreur est survenue.", true);
+      }
+    }
+
+    refreshButton.addEventListener("click", loadAnnouncements);
+
+    (async () => {
+      const authorized = await checkAccess();
+      if (authorized) await loadAnnouncements();
+    })();
+  </script>
+</body>
+</html>
