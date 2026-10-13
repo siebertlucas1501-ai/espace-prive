@@ -24,7 +24,7 @@
       gap: 12px;
     }
     header h1 { margin: 0; font-size: 22px; }
-    button, input[type="file"] { font: inherit; }
+    button, input { font: inherit; }
     button {
       border: 0;
       border-radius: 8px;
@@ -55,50 +55,15 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
       padding: 14px 0;
       border-bottom: 1px solid #e2e8f0;
     }
-    .file-row:last-child { border-bottom: 0; }
     .file-name { overflow-wrap: anywhere; font-weight: bold; }
-    .file-actions { flex-shrink: 0; }
     .file-actions button { background: #e2e8f0; color: #0f172a; }
     .muted { color: #64748b; }
-    .share-button {
-      margin-left: 8px;
-      background: #dbeafe !important;
-      color: #1d4ed8 !important;
-    }
-    .share-panel {
-      width: 100%;
-      margin-top: 12px;
-      padding: 14px;
-      border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-    }
-    .share-panel select {
-      font: inherit;
-      padding: 9px;
-      margin: 4px 6px 4px 0;
-      max-width: 100%;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-    }
-    .share-panel button { margin: 4px; }
-    .share-status { overflow-wrap: anywhere; }
-    .share-entry {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 8px 0;
-      border-top: 1px solid #e2e8f0;
-    }
-    .share-entry button { background: #fee2e2; color: #991b1b; }
     @media (max-width: 500px) {
-      .file-row { align-items: flex-start; }
       .upload-row { align-items: stretch; flex-direction: column; }
       #uploadButton { width: 100%; }
     }
@@ -115,8 +80,9 @@
       <h2>Bienvenue, <span id="username">...</span> !</h2>
       <p>Rôle : <strong id="role">...</strong></p>
       <p class="muted">
-        Les utilisateurs actifs peuvent ajouter des fichiers.
-        La suppression n'est pas proposée sur cette page.
+        Tous les utilisateurs actifs peuvent déposer, consulter et
+        télécharger les documents communs. Seul l'administrateur
+        peut supprimer des fichiers.
       </p>
     </section>
 
@@ -131,8 +97,12 @@
     </section>
 
     <section class="panel">
-      <h2>📁 Documents disponibles</h2>
-      <div id="fileList" class="muted">Chargement des documents...</div>
+      <h2>📁 Documents communs</h2>
+      <p class="muted">Les fichiers déposés ici sont visibles par tous les utilisateurs actifs.</p>
+      <button id="refreshButton" type="button">Actualiser la liste</button>
+      <div id="fileList" class="muted" style="margin-top:12px">
+        Chargement des documents...
+      </div>
     </section>
   </main>
 
@@ -141,7 +111,6 @@
     const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
     let accessToken = sessionStorage.getItem("access_token");
-    let currentAuthUser = null;
     const refreshToken = sessionStorage.getItem("refresh_token");
     const userText = sessionStorage.getItem("user");
 
@@ -149,6 +118,7 @@
     const fileList = document.getElementById("fileList");
     const fileInput = document.getElementById("fileInput");
     const uploadButton = document.getElementById("uploadButton");
+    const refreshButton = document.getElementById("refreshButton");
 
     function headersAuth() {
       return {
@@ -185,7 +155,6 @@
           return false;
         }
 
-        currentAuthUser = await response.json();
         const user = JSON.parse(userText);
         document.getElementById("username").textContent =
           user.username || "Utilisateur";
@@ -194,228 +163,14 @@
 
         return true;
       } catch (error) {
-        fileList.textContent =
-          "Impossible de vérifier la connexion. Recharge la page.";
+        fileList.textContent = "Impossible de vérifier la connexion. Recharge la page.";
         return false;
       }
     }
 
-    async function chargerUtilisateursPartage() {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/liste_utilisateurs_partage`,
-        {
-          method: "POST",
-          headers: {
-            ...headersAuth(),
-            "Content-Type": "application/json"
-          },
-          body: "{}"
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !Array.isArray(data)) {
-        throw new Error("Impossible de charger les utilisateurs.");
-      }
-
-      return data;
-    }
-
-    async function chargerPartagesFichier(fileName, list, status) {
-      list.replaceChildren();
-
-      try {
-        const url =
-          `${SUPABASE_URL}/rest/v1/document_shares` +
-          `?file_path=eq.${encodeURIComponent(fileName)}` +
-          `&select=id,file_name,file_path,owner_id,shared_with,permission,created_at`;
-
-        const response = await fetch(url, {
-          headers: headersAuth()
-        });
-
-        const shares = await response.json();
-
-        if (!response.ok || !Array.isArray(shares)) {
-          throw new Error("Impossible de charger les partages.");
-        }
-
-        const mine = shares.filter(
-          share => share.owner_id === currentAuthUser.id
-        );
-
-        if (!mine.length) {
-          list.textContent = "Aucun partage pour ce document.";
-          return;
-        }
-
-        const users = await chargerUtilisateursPartage();
-        const names = new Map(users.map(user => [user.id, user.username]));
-
-        for (const share of mine) {
-          const entry = document.createElement("div");
-          entry.className = "share-entry";
-
-          const label = document.createElement("span");
-          label.textContent =
-            `${names.get(share.shared_with) || "Utilisateur"} — ` +
-            (share.permission === "edit"
-              ? "Modification (pas encore activée)"
-              : "Lecture");
-
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.textContent = "Retirer le partage";
-
-          remove.addEventListener("click", async () => {
-            if (!confirm("Retirer le partage de ce document ?")) return;
-
-            const del = await fetch(
-              `${SUPABASE_URL}/rest/v1/document_shares?id=eq.${encodeURIComponent(share.id)}`,
-              {
-                method: "DELETE",
-                headers: {
-                  ...headersAuth(),
-                  "Prefer": "return=minimal"
-                }
-              }
-            );
-
-            if (!del.ok) {
-              status.textContent = "Impossible de retirer ce partage.";
-              return;
-            }
-
-            status.textContent = "Partage retiré.";
-            await chargerPartagesFichier(fileName, list, status);
-          });
-
-          entry.append(label, remove);
-          list.appendChild(entry);
-        }
-      } catch (error) {
-        status.textContent =
-          error.message || "Erreur de chargement des partages.";
-      }
-    }
-
-    async function ouvrirPartage(file, panel) {
-      panel.replaceChildren();
-
-      const title = document.createElement("h3");
-      title.textContent = "Partager ce document";
-      panel.appendChild(title);
-
-      const status = document.createElement("p");
-      status.className = "share-status";
-      status.setAttribute("role", "status");
-      panel.appendChild(status);
-
-      const userSelect = document.createElement("select");
-      userSelect.setAttribute("aria-label", "Destinataire");
-
-      const permission = document.createElement("select");
-      permission.setAttribute("aria-label", "Autorisation");
-      permission.innerHTML =
-        '<option value="read">Lecture</option>' +
-        '<option value="edit">Modification</option>';
-
-      const send = document.createElement("button");
-      send.type = "button";
-      send.textContent = "Partager";
-      send.style.background = "#2563eb";
-      send.style.color = "white";
-
-      const listTitle = document.createElement("h4");
-      listTitle.textContent = "Partages existants";
-
-      const list = document.createElement("div");
-
-      panel.append(userSelect, permission, send, listTitle, list);
-
-      try {
-        const users = await chargerUtilisateursPartage();
-
-        for (const user of users) {
-          const option = document.createElement("option");
-          option.value = user.id;
-          option.textContent = user.username;
-          userSelect.appendChild(option);
-        }
-
-        if (!users.length) {
-          const option = document.createElement("option");
-          option.value = "";
-          option.textContent = "Aucun autre utilisateur disponible";
-          userSelect.appendChild(option);
-          send.disabled = true;
-        }
-      } catch (error) {
-        status.textContent = error.message;
-        send.disabled = true;
-      }
-
-      send.addEventListener("click", async () => {
-        if (!userSelect.value) {
-          status.textContent = "Choisis un destinataire.";
-          return;
-        }
-
-        send.disabled = true;
-        status.textContent = "Création du partage...";
-
-        try {
-          const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/document_shares`,
-            {
-              method: "POST",
-              headers: {
-                ...headersAuth(),
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                file_path: file.name,
-                file_name: file.name.split("/").pop(),
-                owner_id: currentAuthUser.id,
-                shared_with: userSelect.value,
-                permission: permission.value
-              })
-            }
-          );
-
-          if (!response.ok) {
-            const details = await response.text();
-            console.error(details);
-
-            status.textContent = response.status === 409
-              ? "Ce fichier est déjà partagé avec cette personne."
-              : "Partage refusé. Tu dois être propriétaire du fichier et le destinataire doit être actif.";
-            return;
-          }
-
-          status.textContent = "Document partagé avec succès.";
-          await chargerPartagesFichier(file.name, list, status);
-        } catch (error) {
-          status.textContent = "Erreur pendant le partage.";
-        } finally {
-          send.disabled = false;
-        }
-      });
-
-      const note = document.createElement("p");
-      note.className = "muted";
-      note.style.fontSize = "13px";
-      note.textContent =
-        "Le droit Modification est enregistré, mais n’est pas encore activé techniquement. Le partage autorise actuellement la lecture.";
-      panel.appendChild(note);
-
-      await chargerPartagesFichier(file.name, list, status);
-    }
-
     async function chargerDocuments() {
       fileList.textContent = "Chargement des documents...";
+      refreshButton.disabled = true;
 
       try {
         const response = await fetch(
@@ -438,9 +193,9 @@
         const result = await response.json();
 
         if (!response.ok || !Array.isArray(result)) {
-          fileList.textContent =
-            "Impossible de charger les documents. Vérifie les autorisations.";
           console.error(result);
+          fileList.textContent =
+            "Impossible de charger les documents. Vérifie les autorisations Supabase.";
           return;
         }
 
@@ -455,6 +210,7 @@
 
         if (files.length === 0) {
           fileList.textContent = "Aucun document pour le moment.";
+          fileList.className = "muted";
           return;
         }
 
@@ -509,42 +265,15 @@
             }
           });
 
-          const shareButton = document.createElement("button");
-          shareButton.type = "button";
-          shareButton.textContent = "Partager";
-          shareButton.className = "share-button";
-
-          const sharePanel = document.createElement("div");
-          sharePanel.className = "share-panel";
-          sharePanel.hidden = true;
-
-          shareButton.addEventListener("click", async () => {
-            sharePanel.hidden = !sharePanel.hidden;
-            if (!sharePanel.hidden) {
-              await ouvrirPartage(file, sharePanel);
-            }
-          });
-
-          actions.append(downloadButton, shareButton);
-
-          const content = document.createElement("div");
-          content.style.width = "100%";
-
-          const top = document.createElement("div");
-          top.style.display = "flex";
-          top.style.alignItems = "center";
-          top.style.justifyContent = "space-between";
-          top.style.flexWrap = "wrap";
-          top.style.gap = "12px";
-
-          top.append(name, actions);
-          content.append(top, sharePanel);
-          row.appendChild(content);
+          actions.appendChild(downloadButton);
+          row.append(name, actions);
           fileList.appendChild(row);
         }
       } catch (error) {
-        fileList.textContent = "Erreur de connexion au stockage.";
         console.error(error);
+        fileList.textContent = "Erreur de connexion au stockage.";
+      } finally {
+        refreshButton.disabled = false;
       }
     }
 
@@ -558,7 +287,7 @@
 
       const safeName = file.name
         .normalize("NFKC")
-        .replace(/[^a-zA-Z0-9._() -]/g, "_");
+        .replace(/[^a-zA-Z0-9.() _-]/g, "_");
 
       const uniqueName = `${Date.now()}_${safeName}`;
 
@@ -582,7 +311,7 @@
         if (!response.ok) {
           console.error(await response.text());
           afficherMessage(
-            "Échec de l'envoi. Vérifie les règles Supabase et ta connexion.",
+            "Échec de l'envoi. Vérifie les autorisations Supabase et ta connexion.",
             true
           );
           return;
@@ -598,6 +327,8 @@
         uploadButton.disabled = false;
       }
     });
+
+    refreshButton.addEventListener("click", chargerDocuments);
 
     document.getElementById("logout").addEventListener("click", () => {
       sessionStorage.clear();
