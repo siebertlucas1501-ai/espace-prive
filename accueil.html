@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -7,55 +6,153 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mon espace privé</title>
   <style>
+    :root {
+      --bg: #f3f6fc;
+      --surface: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #3157d5;
+      --primary-hover: #2446b8;
+      --border: #e4eaf4;
+      --shadow: 0 12px 35px rgba(22, 34, 66, .07);
+      --radius: 18px;
+    }
+
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f1f5f9;
-      color: #0f172a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(75, 111, 230, .09), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
     }
 
     header {
-      background: #0f172a;
+      background: rgba(15, 23, 42, .97);
       color: white;
-      padding: 20px;
+      padding: 18px clamp(16px, 4vw, 42px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 14px;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, .12);
     }
 
-    header h1 { margin: 0; font-size: 22px; }
+    header h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 27px);
+      letter-spacing: -.5px;
+    }
 
     button, input { font: inherit; }
 
     button {
       border: 0;
-      border-radius: 8px;
-      padding: 11px 15px;
+      border-radius: 11px;
+      padding: 11px 16px;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 700;
+      transition: transform .15s ease, background .15s ease,
+        box-shadow .15s ease;
     }
 
-    button:disabled { opacity: .6; cursor: wait; }
+    button:hover { transform: translateY(-1px); }
 
-    #logout { background: #ef4444; color: white; }
+    button:focus-visible, a:focus-visible, input:focus-visible {
+      outline: 3px solid rgba(49, 87, 213, .35);
+      outline-offset: 3px;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+      transform: none;
+    }
+
+    #logout {
+      background: #ef4444;
+      color: white;
+    }
+
+    #logout:hover { background: #dc2626; }
 
     main {
-      max-width: 1000px;
-      margin: 30px auto;
-      padding: 0 16px;
+      width: min(100% - 32px, 1040px);
+      margin: 30px auto 56px;
+      padding: 0;
     }
 
     .panel {
-      background: white;
-      border-radius: 14px;
-      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(18px, 3vw, 28px);
       margin-bottom: 20px;
-      box-shadow: 0 4px 15px #0f172a0d;
+      box-shadow: var(--shadow);
     }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: clamp(19px, 2.5vw, 23px);
+      letter-spacing: -.35px;
+    }
+
+    .panel p { margin-top: 8px; }
+    .muted { color: var(--muted); }
+
+    #role {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #edf2ff;
+      color: #2949b7;
+      border-radius: 999px;
+      font-size: .9em;
+    }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .quick-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 14px 18px;
+      border-radius: 13px;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      text-align: center;
+      font-weight: 750;
+      box-shadow: 0 6px 16px rgba(49, 87, 213, .16);
+      transition: transform .15s ease, background .15s ease,
+        box-shadow .15s ease;
+    }
+
+    .quick-button:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 9px 22px rgba(49, 87, 213, .22);
+    }
+
+    .admin-button {
+      background: #087f72;
+      box-shadow: 0 6px 16px rgba(8, 127, 114, .16);
+    }
+
+    .admin-button:hover { background: #06675d; }
+    .admin-button[hidden] { display: none; }
 
     .upload-row {
       display: flex;
@@ -64,9 +161,30 @@
       align-items: center;
     }
 
-    #uploadButton { background: #2563eb; color: white; }
-    #fileInput { max-width: 100%; padding: 8px 0; }
-    #message { margin-top: 14px; overflow-wrap: anywhere; }
+    #uploadButton, #refreshButton {
+      background: var(--primary);
+      color: white;
+    }
+
+    #uploadButton:hover, #refreshButton:hover {
+      background: var(--primary-hover);
+    }
+
+    #fileInput {
+      max-width: 100%;
+      min-width: 0;
+      flex: 1 1 240px;
+      padding: 10px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 11px;
+      background: #f8faff;
+    }
+
+    #message {
+      margin-top: 14px;
+      overflow-wrap: anywhere;
+      font-weight: 600;
+    }
 
     .file-row {
       display: flex;
@@ -74,44 +192,55 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid #e2e8f0;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--border);
     }
 
-    .file-name { overflow-wrap: anywhere; font-weight: bold; }
-    .file-actions button { background: #e2e8f0; color: #0f172a; }
-    .muted { color: #64748b; }
+    .file-row:last-child { border-bottom: 0; }
+    .file-name { overflow-wrap: anywhere; font-weight: 650; }
 
-    /* Boutons d'accès rapide */
-    .quick-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 15px;
+    .file-actions button {
+      background: #edf2ff;
+      color: #2949b7;
     }
 
-    .quick-button {
-      display: inline-block;
-      padding: 13px 18px;
-      border-radius: 9px;
-      background: #2563eb;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
+    .file-actions button:hover { background: #dce6ff; }
 
-    .quick-button:hover { background: #1d4ed8; }
-    .admin-button { background: #0f766e; }
-    .admin-button:hover { background: #115e59; }
-    .admin-button[hidden] { display: none; }
+    @media (max-width: 560px) {
+      header { align-items: stretch; }
+      header h1 { font-size: 21px; }
+      #logout { width: 100%; }
 
-    @media (max-width: 500px) {
+      main {
+        width: min(100% - 22px, 1040px);
+        margin-top: 18px;
+      }
+
+      .panel {
+        border-radius: 15px;
+        padding: 18px;
+        margin-bottom: 14px;
+      }
+
+      .quick-links { grid-template-columns: 1fr; }
+      .quick-button { width: 100%; }
+
       .upload-row {
         align-items: stretch;
         flex-direction: column;
       }
 
-      #uploadButton { width: 100%; }
+      #uploadButton, #refreshButton { width: 100%; }
+      #fileInput { width: 100%; flex-basis: auto; }
+      .file-row { align-items: stretch; }
+      .file-actions, .file-actions button { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
@@ -124,7 +253,7 @@
 
   <main>
     <section class="panel">
-      <h2>Bienvenue, <span id="username">...</span> !</h2>
+      <h2>Bienvenue, <span id="username">...</span> 👋</h2>
       <p>Rôle : <strong id="role">...</strong></p>
       <p class="muted">
         Tous les utilisateurs actifs peuvent déposer, consulter et
@@ -133,7 +262,6 @@
       </p>
     </section>
 
-    <!-- Les deux boutons d'accès -->
     <section class="panel">
       <h2>🚀 Accès rapides</h2>
       <div class="quick-links">
@@ -272,7 +400,6 @@
         document.getElementById("role").textContent =
           user.role === "admin" ? "Administrateur" : "Utilisateur";
 
-        // Le bouton Administration apparaît uniquement pour le rôle admin
         document.getElementById("adminButton").hidden =
           user.role !== "admin";
 
@@ -447,7 +574,6 @@
           return;
         }
 
-        // Enregistrer uniquement si l'envoi a réussi
         await enregistrerAction("Ajout de fichier", file.name);
 
         afficherMessage("Fichier envoyé avec succès !");
