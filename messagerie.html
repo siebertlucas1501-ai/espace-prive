@@ -1,1 +1,412 @@
 
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messagerie - Espace privé</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#0f172a}
+header{background:#0f172a;color:white;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:22px;margin:0}
+button,input,select,textarea{font:inherit}
+button{border:0;border-radius:8px;padding:10px 13px;cursor:pointer;font-weight:bold;background:#2563eb;color:white}
+button:disabled{opacity:.55;cursor:wait}
+.secondary{background:#e2e8f0;color:#0f172a}
+#logout{background:#ef4444}
+main{max-width:1150px;margin:24px auto;padding:0 14px}
+.panel{background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 15px #0f172a0d}
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:16px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white}
+label{display:block;font-weight:bold;margin:12px 0 6px}
+button{margin:3px 2px}
+.conversation{display:block;width:100%;text-align:left;background:white;color:#0f172a;border:1px solid #e2e8f0;margin:8px 0;padding:12px}
+.conversation.selected{border-color:#2563eb;background:#eff6ff}
+.small{font-size:13px;color:#64748b}
+#messages{height:360px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;padding:12px;background:#f8fafc}
+.bubble{padding:10px 12px;border-radius:12px;background:#e2e8f0;margin:8px 0;max-width:85%;overflow-wrap:anywhere}
+.bubble.mine{margin-left:auto;background:#dbeafe}
+.bubble strong{display:block;font-size:12px;margin-bottom:5px}
+#status{white-space:pre-wrap;margin:12px 0}
+.hidden{display:none!important}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:750px){.layout{grid-template-columns:1fr}#messages{height:300px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>💬 Messagerie de l’espace privé</h1>
+  <div>
+    <button class="secondary" id="homeButton">Accueil</button>
+    <button id="logout">Se déconnecter</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <strong>Connecté : <span id="username">...</span></strong>
+    <p class="small">Les conversations et messages sont réservés à leurs participants. L’administrateur peut consulter toutes les conversations.</p>
+    <div id="status" role="status" aria-live="polite">Vérification de la connexion…</div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>Mes conversations</h2>
+      <button id="refreshButton" class="secondary">Actualiser</button>
+      <div id="conversationList" class="small">Chargement…</div>
+
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
+      <h3>Nouvelle conversation</h3>
+      <label for="type">Type</label>
+      <select id="type">
+        <option value="privee">Privée — un destinataire</option>
+        <option value="groupe">Groupe — plusieurs personnes</option>
+      </select>
+      <div id="groupTitleBox" class="hidden">
+        <label for="groupTitle">Nom du groupe</label>
+        <input id="groupTitle" maxlength="100" placeholder="Ex. Groupe technologie">
+      </div>
+      <label for="users">Participants</label>
+      <select id="users" multiple size="7" aria-describedby="usersHelp"></select>
+      <p id="usersHelp" class="small">Sur ordinateur : maintiens Ctrl pour sélectionner plusieurs personnes. Tu seras ajouté automatiquement.</p>
+      <div class="actions">
+        <button id="createButton">Créer</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 id="conversationTitle">Choisis une conversation</h2>
+      <div id="messages" aria-live="polite" class="small">Sélectionne une conversation à gauche.</div>
+      <form id="sendForm">
+        <label for="content">Ton message</label>
+        <textarea id="content" maxlength="5000" rows="3" placeholder="Écris ton message…" required></textarea>
+        <div class="actions">
+          <button id="sendButton" type="submit" disabled>Envoyer</button>
+          <button id="reloadMessages" type="button" class="secondary" disabled>Actualiser les messages</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <section id="adminPanel" class="panel hidden">
+    <h2>🔒 Administration — toutes les conversations</h2>
+    <p class="small">Cette partie est réservée au compte administrateur. Les messages affichés ici peuvent être lus par l’administrateur.</p>
+    <button id="adminRefresh" class="secondary">Actualiser la liste</button>
+    <div id="adminList">Chargement…</div>
+    <div id="adminMessages" class="hidden">
+      <h3 id="adminConversationTitle">Messages</h3>
+      <div id="adminMessageList"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+let accessToken = sessionStorage.getItem("access_token");
+const refreshToken = sessionStorage.getItem("refresh_token");
+let userData = {};
+let currentUserId = null;
+let currentConversationId = null;
+let isAdmin = false;
+let activeUsers = [];
+let conversations = [];
+
+const $ = id => document.getElementById(id);
+const status = $("status");
+
+function setStatus(text, error=false) {
+  status.textContent = text;
+  status.style.color = error ? "#dc2626" : "#15803d";
+}
+function authHeaders(extra={}) {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${accessToken}`,
+    ...extra
+  };
+}
+async function requestJson(url, options={}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: authHeaders(options.headers || {})
+  });
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch {}
+  if (!response.ok) {
+    const detail = data?.message || data?.hint || text || `HTTP ${response.status}`;
+    throw new Error(detail);
+  }
+  return data;
+}
+function rpc(name, args) {
+  return requestJson(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(args)
+  });
+}
+function escapeText(value) {
+  return String(value ?? "");
+}
+function selectedUserIds() {
+  return Array.from($("users").selectedOptions).map(option => option.value);
+}
+function afficherListeVide(container, text) {
+  container.replaceChildren();
+  const p = document.createElement("p");
+  p.className = "small";
+  p.textContent = text;
+  container.appendChild(p);
+}
+function showMessageBubble(container, item, mine=false) {
+  const bubble = document.createElement("div");
+  bubble.className = "bubble" + (mine ? " mine" : "");
+  const author = document.createElement("strong");
+  const date = item.created_at ? new Date(item.created_at).toLocaleString("fr-FR") : "";
+  author.textContent = `${item.expediteur || item.username || "Utilisateur"} · ${date}`;
+  const content = document.createElement("div");
+  content.textContent = escapeText(item.contenu);
+  bubble.append(author, content);
+  container.appendChild(bubble);
+}
+async function checkSession() {
+  if (!accessToken || !refreshToken || !sessionStorage.getItem("user")) {
+    location.replace("index.html");
+    return false;
+  }
+
+  const authUser = await requestJson(`${SUPABASE_URL}/auth/v1/user`);
+  currentUserId = authUser.id;
+  userData = JSON.parse(sessionStorage.getItem("user"));
+  $("username").textContent = userData.username || "Utilisateur";
+  isAdmin = userData.role === "admin";
+
+  // Vérifier aussi que le profil existe et est actif.
+  const profiles = await requestJson(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(currentUserId)}&select=id,username,role,active`
+  );
+  if (!profiles?.length || profiles[0].active !== true) {
+    sessionStorage.clear();
+    location.replace("index.html");
+    return false;
+  }
+  isAdmin = profiles[0].role === "admin";
+  if (isAdmin) $("adminPanel").classList.remove("hidden");
+  return true;
+}
+async function chargerUtilisateurs() {
+  const data = await requestJson(
+    `${SUPABASE_URL}/rest/v1/profiles?select=id,username,active&active=eq.true&order=username.asc`
+  );
+  activeUsers = data.filter(u => u.id !== currentUserId);
+  const select = $("users");
+  select.replaceChildren();
+  for (const u of activeUsers) {
+    const option = document.createElement("option");
+    option.value = u.id;
+    option.textContent = u.username;
+    select.appendChild(option);
+  }
+}
+async function chargerConversations() {
+  $("conversationList").textContent = "Chargement…";
+  const data = await rpc("lister_mes_conversations", {});
+  conversations = data || [];
+  const list = $("conversationList");
+  list.replaceChildren();
+
+  if (!conversations.length) {
+    afficherListeVide(list, "Aucune conversation. Crée la première !");
+    return;
+  }
+
+  for (const c of conversations) {
+    const btn = document.createElement("button");
+    btn.className = "conversation" + (String(c.id) === String(currentConversationId) ? " selected" : "");
+    const title = c.titre || (c.type === "privee" ? "Conversation privée" : "Groupe");
+    const preview = c.dernier_message ? `\n${c.dernier_message}` : "\nAucun message";
+    btn.textContent = title + preview;
+    btn.addEventListener("click", () => ouvrirConversation(c));
+    list.appendChild(btn);
+  }
+}
+async function ouvrirConversation(c) {
+  currentConversationId = c.id;
+  $("conversationTitle").textContent = c.titre || (c.type === "privee" ? "Conversation privée" : "Groupe");
+  $("messages").textContent = "Chargement des messages…";
+  $("sendButton").disabled = false;
+  $("reloadMessages").disabled = false;
+  try {
+    await chargerMessages();
+    await chargerConversations();
+  } catch (e) {
+    setStatus("Impossible de charger les messages : " + e.message, true);
+  }
+}
+async function chargerMessages() {
+  if (!currentConversationId) return;
+  const data = await rpc("lire_messages", {p_conversation_id: currentConversationId});
+  const container = $("messages");
+  container.replaceChildren();
+  if (!data?.length) {
+    afficherListeVide(container, "Aucun message pour le moment.");
+    return;
+  }
+  for (const m of data) {
+    const profile = await requestJson(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(m.sender_id)}&select=username`
+    );
+    showMessageBubble(container, {
+      ...m,
+      expediteur: profile?.[0]?.username || "Utilisateur"
+    }, m.sender_id === currentUserId);
+  }
+  container.scrollTop = container.scrollHeight;
+}
+async function creerConversation() {
+  const type = $("type").value;
+  const participants = selectedUserIds();
+  if (type === "privee" && participants.length !== 1) {
+    setStatus("Choisis exactement un destinataire pour une conversation privée.", true);
+    return;
+  }
+  if (type === "groupe" && participants.length < 2) {
+    setStatus("Choisis au moins deux personnes pour le groupe.", true);
+    return;
+  }
+  const titre = $("groupTitle").value.trim();
+  if (type === "groupe" && !titre) {
+    setStatus("Donne un nom au groupe.", true);
+    return;
+  }
+  $("createButton").disabled = true;
+  try {
+    const id = await rpc("creer_conversation", {
+      p_titre: titre,
+      p_type: type,
+      p_participants: participants
+    });
+    currentConversationId = id;
+    setStatus("Conversation créée !");
+    await chargerConversations();
+    const c = conversations.find(x => String(x.id) === String(id));
+    if (c) await ouvrirConversation(c);
+    $("users").selectedIndex = -1;
+    $("groupTitle").value = "";
+  } catch (e) {
+    setStatus("Impossible de créer la conversation : " + e.message, true);
+  } finally {
+    $("createButton").disabled = false;
+  }
+}
+async function envoyerMessage(event) {
+  event.preventDefault();
+  if (!currentConversationId) {
+    setStatus("Choisis d'abord une conversation.", true);
+    return;
+  }
+  const contenu = $("content").value.trim();
+  if (!contenu) return;
+  $("sendButton").disabled = true;
+  try {
+    await rpc("envoyer_message", {
+      p_conversation_id: currentConversationId,
+      p_contenu: contenu
+    });
+    $("content").value = "";
+    await chargerMessages();
+    await chargerConversations();
+    setStatus("Message envoyé.");
+  } catch (e) {
+    setStatus("Impossible d'envoyer le message : " + e.message, true);
+  } finally {
+    $("sendButton").disabled = false;
+  }
+}
+async function adminChargerConversations() {
+  if (!isAdmin) return;
+  const container = $("adminList");
+  container.textContent = "Chargement…";
+  try {
+    const data = await rpc("admin_lister_conversations", {});
+    container.replaceChildren();
+    if (!data?.length) {
+      afficherListeVide(container, "Aucune conversation.");
+      return;
+    }
+    for (const c of data) {
+      const btn = document.createElement("button");
+      btn.className = "conversation";
+      btn.textContent = `${c.titre || "Conversation privée"} — ${c.createur} — ${c.nombre_messages} message(s)`;
+      btn.addEventListener("click", () => adminLireConversation(c));
+      container.appendChild(btn);
+    }
+  } catch (e) {
+    container.textContent = "Erreur administrateur : " + e.message;
+  }
+}
+async function adminLireConversation(c) {
+  $("adminMessages").classList.remove("hidden");
+  $("adminConversationTitle").textContent = c.titre || "Conversation privée";
+  const container = $("adminMessageList");
+  container.textContent = "Chargement…";
+  try {
+    const data = await rpc("admin_lire_messages", {p_conversation_id: c.id});
+    container.replaceChildren();
+    if (!data?.length) {
+      afficherListeVide(container, "Aucun message.");
+      return;
+    }
+    for (const m of data) showMessageBubble(container, m);
+  } catch (e) {
+    container.textContent = "Erreur : " + e.message;
+  }
+}
+
+$("type").addEventListener("change", () => {
+  $("groupTitleBox").classList.toggle("hidden", $("type").value !== "groupe");
+});
+$("createButton").addEventListener("click", creerConversation);
+$("sendForm").addEventListener("submit", envoyerMessage);
+$("refreshButton").addEventListener("click", async () => {
+  try {
+    await chargerConversations();
+    setStatus("Liste actualisée.");
+  } catch (e) {
+    setStatus("Erreur : " + e.message, true);
+  }
+});
+$("reloadMessages").addEventListener("click", async () => {
+  try { await chargerMessages(); setStatus("Messages actualisés."); }
+  catch (e) { setStatus("Erreur : " + e.message, true); }
+});
+$("adminRefresh").addEventListener("click", adminChargerConversations);
+$("homeButton").addEventListener("click", () => location.href = "accueil.html");
+$("logout").addEventListener("click", () => {
+  sessionStorage.clear();
+  location.replace("index.html");
+});
+
+(async () => {
+  try {
+    if (await checkSession()) {
+      await chargerUtilisateurs();
+      await chargerConversations();
+      if (isAdmin) await adminChargerConversations();
+      setStatus("Messagerie prête.");
+    }
+  } catch (e) {
+    console.error(e);
+    setStatus("Erreur de chargement : " + e.message, true);
+  }
+})();
+</script>
+</body>
+</html>
