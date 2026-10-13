@@ -5,14 +5,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Administration - Mon espace privé</title>
+
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f5f9;
       color: #0f172a;
     }
+
     header {
       background: #0f172a;
       color: white;
@@ -23,8 +26,10 @@
       flex-wrap: wrap;
       gap: 12px;
     }
+
     header h1 { margin: 0; font-size: 22px; }
-    main { max-width: 1050px; margin: 30px auto; padding: 0 16px; }
+    main { max-width: 1100px; margin: 30px auto; padding: 0 16px; }
+
     .panel {
       background: white;
       padding: 22px;
@@ -32,7 +37,9 @@
       border-radius: 14px;
       box-shadow: 0 4px 15px #0f172a0d;
     }
+
     label { display: block; margin: 14px 0 6px; font-weight: bold; }
+
     input {
       display: block;
       width: 100%;
@@ -41,6 +48,7 @@
       border-radius: 8px;
       font: inherit;
     }
+
     button {
       border: 0;
       border-radius: 8px;
@@ -49,11 +57,40 @@
       font-weight: bold;
       cursor: pointer;
     }
+
     button:disabled { opacity: .6; cursor: wait; }
+
     #createButton { margin-top: 18px; background: #2563eb; color: white; }
-    #backButton, #refreshButton { background: #e2e8f0; color: #0f172a; }
-    #message, #listMessage { margin-top: 14px; overflow-wrap: anywhere; }
+    #backButton, #refreshButton, #historyRefreshButton {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    #message, #listMessage, #historyMessage {
+      margin-top: 14px;
+      overflow-wrap: anywhere;
+    }
+
     .muted { color: #64748b; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .stat-card {
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .stat-label { color: #64748b; font-size: 14px; margin-bottom: 10px; }
+    .stat-number { font-size: 30px; font-weight: bold; }
+    .stat-detail { color: #64748b; font-size: 12px; margin-top: 7px; }
+
     .user-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto auto;
@@ -62,8 +99,9 @@
       padding: 14px 0;
       border-bottom: 1px solid #e2e8f0;
     }
-    .user-row:last-child { border-bottom: 0; }
+
     .user-name { font-weight: bold; overflow-wrap: anywhere; }
+
     .tag {
       display: inline-block;
       padding: 5px 9px;
@@ -72,44 +110,32 @@
       background: #e2e8f0;
       white-space: nowrap;
     }
+
     .tag.admin { background: #dbeafe; color: #1d4ed8; }
     .tag.active { background: #dcfce7; color: #166534; }
     .tag.inactive { background: #fee2e2; color: #991b1b; }
+
     .user-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .user-actions button { font-size: 13px; }
     .disable-button { background: #fee2e2; color: #991b1b; }
     .enable-button { background: #dcfce7; color: #166534; }
     .rename-button { background: #dbeafe; color: #1d4ed8; }
     .password-button { background: #fef3c7; color: #92400e; }
-    .user-actions button { font-size: 13px; }
 
-    /* Tableau de bord */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 18px;
+    .history-wrap { overflow-x: auto; margin-top: 14px; }
+    .history-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+
+    .history-table th,
+    .history-table td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+      overflow-wrap: anywhere;
     }
-    .stat-card {
-      padding: 18px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: #f8fafc;
-    }
-    .stat-label {
-      color: #64748b;
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-    .stat-number {
-      font-size: 30px;
-      font-weight: bold;
-      line-height: 1.2;
-    }
-    .stat-detail {
-      color: #64748b;
-      font-size: 12px;
-      margin-top: 7px;
-    }
+
+    .history-table th { background: #f8fafc; color: #475569; }
+    .history-table td { font-size: 14px; }
 
     @media (max-width: 700px) {
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -122,6 +148,7 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <h1>⚙️ Administration</h1>
@@ -129,64 +156,49 @@
   </header>
 
   <main>
-    <!-- Tableau de bord -->
     <section class="panel">
       <h2>📊 Tableau de bord</h2>
       <p class="muted">Résumé des comptes enregistrés sur ton espace privé.</p>
 
-      <div class="stats-grid" aria-live="polite">
+      <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Total des comptes</div>
           <div class="stat-number" id="statTotal">—</div>
-          <div class="stat-detail">Tous les comptes listés</div>
+          <div class="stat-detail">Tous les comptes</div>
         </div>
+
         <div class="stat-card">
           <div class="stat-label">Comptes actifs</div>
           <div class="stat-number" id="statActive">—</div>
           <div class="stat-detail">Accès activé</div>
         </div>
+
         <div class="stat-card">
           <div class="stat-label">Comptes désactivés</div>
           <div class="stat-number" id="statInactive">—</div>
           <div class="stat-detail">Accès désactivé</div>
         </div>
+
         <div class="stat-card">
           <div class="stat-label">Administrateurs</div>
           <div class="stat-number" id="statAdmins">—</div>
-          <div class="stat-detail">Comptes avec le rôle admin</div>
+          <div class="stat-detail">Comptes administrateurs</div>
         </div>
       </div>
     </section>
 
-    <!-- Création d'utilisateur -->
-    <section class="panel">
+    <section class="panel" id="creationPanel">
       <h2>Créer un utilisateur</h2>
-      <p class="muted">
-        Crée un compte avec un nom d'utilisateur et un mot de passe.
-        Aucun courriel personnel n'est nécessaire.
-      </p>
+      <p class="muted">Crée un compte avec un nom d'utilisateur et un mot de passe. Aucun courriel personnel n'est nécessaire.</p>
 
       <form id="createForm">
         <label for="newUsername">Nom d'utilisateur</label>
-        <input
-          id="newUsername"
-          name="username"
-          minlength="3"
-          maxlength="30"
-          pattern="[a-zA-Z0-9._-]{3,30}"
-          autocomplete="off"
-          required
-        >
+        <input id="newUsername" name="username" minlength="3" maxlength="30"
+          pattern="[a-zA-Z0-9._-]{3,30}" autocomplete="off" required>
 
         <label for="newPassword">Mot de passe provisoire</label>
-        <input
-          id="newPassword"
-          name="password"
-          type="password"
-          minlength="10"
-          autocomplete="new-password"
-          required
-        >
+        <input id="newPassword" name="password" type="password"
+          minlength="10" autocomplete="new-password" required>
 
         <button id="createButton" type="submit">Créer le compte</button>
       </form>
@@ -194,23 +206,37 @@
       <div id="message" role="status" aria-live="polite"></div>
     </section>
 
-    <!-- Liste des utilisateurs -->
     <section class="panel">
       <h2>👥 Utilisateurs existants</h2>
-      <p class="muted">
-        Consulte les comptes, modifie leur nom, réinitialise leur mot de passe
-        et gère leur accès. Les comptes administrateurs ne peuvent pas être
-        modifiés ici.
-      </p>
+      <p class="muted">Consulte les comptes, modifie leur nom, réinitialise leur mot de passe et gère leur accès. Les comptes administrateurs ne peuvent pas être modifiés ici.</p>
 
       <button id="refreshButton" type="button">Actualiser la liste</button>
-      <div id="listMessage" role="status" aria-live="polite">
-        Chargement des utilisateurs...
-      </div>
+      <div id="listMessage" role="status" aria-live="polite">Chargement des utilisateurs...</div>
       <div id="userList"></div>
     </section>
 
-    <!-- État de la session -->
+    <section class="panel">
+      <h2>📋 Historique des actions</h2>
+      <p class="muted">Consulte les connexions, les ajouts de fichiers et les autres actions enregistrées.</p>
+
+      <button id="historyRefreshButton" type="button">Actualiser l'historique</button>
+      <div id="historyMessage" class="muted" role="status" aria-live="polite">Chargement de l'historique...</div>
+
+      <div class="history-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Action</th>
+              <th>Détails</th>
+              <th>Date et heure</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel">
       <h2>Accès administrateur</h2>
       <p id="sessionStatus" class="muted">Vérification de la session...</p>
@@ -233,6 +259,9 @@
     const userList = document.getElementById("userList");
     const listMessage = document.getElementById("listMessage");
     const refreshButton = document.getElementById("refreshButton");
+    const historyRefreshButton = document.getElementById("historyRefreshButton");
+    const historyMessage = document.getElementById("historyMessage");
+    const historyBody = document.getElementById("historyBody");
 
     let sessionValide = false;
 
@@ -264,6 +293,7 @@
         loginButton.hidden = false;
         form.hidden = true;
         refreshButton.disabled = true;
+        historyRefreshButton.disabled = true;
         return false;
       }
 
@@ -276,11 +306,11 @@
         });
 
         if (!response.ok) {
-          sessionStatus.textContent =
-            "Session expirée ou invalide. Reconnecte-toi.";
+          sessionStatus.textContent = "Session expirée ou invalide. Reconnecte-toi.";
           loginButton.hidden = false;
           form.hidden = true;
           refreshButton.disabled = true;
+          historyRefreshButton.disabled = true;
           return false;
         }
 
@@ -290,6 +320,7 @@
           sessionStatus.textContent = "Ce compte n'est pas administrateur.";
           form.hidden = true;
           refreshButton.disabled = true;
+          historyRefreshButton.disabled = true;
           return false;
         }
 
@@ -300,10 +331,12 @@
 
         return true;
       } catch (error) {
+        console.error(error);
         sessionStatus.textContent =
           "Impossible de vérifier la session. Vérifie ta connexion.";
         form.hidden = true;
         refreshButton.disabled = true;
+        historyRefreshButton.disabled = true;
         return false;
       }
     }
@@ -344,24 +377,16 @@
         const result = await appelerFonction("list-users", {});
 
         if (!Array.isArray(result.users)) {
-          throw new Error(
-            "La réponse du serveur ne contient pas une liste d'utilisateurs valide."
-          );
+          throw new Error("La réponse du serveur ne contient pas une liste valide.");
         }
 
-        // Calcul des statistiques
         const total = result.users.length;
-        const actifs = result.users.filter(
-          user => user.active === true
-        ).length;
-        const desactives = total - actifs;
-        const admins = result.users.filter(
-          user => user.role === "admin"
-        ).length;
+        const actifs = result.users.filter(user => user.active === true).length;
+        const admins = result.users.filter(user => user.role === "admin").length;
 
         document.getElementById("statTotal").textContent = total;
         document.getElementById("statActive").textContent = actifs;
-        document.getElementById("statInactive").textContent = desactives;
+        document.getElementById("statInactive").textContent = total - actifs;
         document.getElementById("statAdmins").textContent = admins;
 
         if (total === 0) {
@@ -370,7 +395,6 @@
         }
 
         listMessage.textContent = `${total} compte(s) trouvé(s).`;
-
         const currentUser = JSON.parse(userText);
 
         for (const user of result.users) {
@@ -383,43 +407,37 @@
 
           const role = document.createElement("span");
           role.className = "tag" + (user.role === "admin" ? " admin" : "");
-          role.textContent =
-            user.role === "admin" ? "Administrateur" : "Utilisateur";
+          role.textContent = user.role === "admin" ? "Administrateur" : "Utilisateur";
 
           const status = document.createElement("span");
-          status.className =
-            "tag status " + (user.active === true ? "active" : "inactive");
+          status.className = "tag status " +
+            (user.active === true ? "active" : "inactive");
           status.textContent = user.active === true ? "Actif" : "Désactivé";
 
           const actions = document.createElement("div");
           actions.className = "user-actions";
 
           if (user.role === "user" && user.id !== currentUser.id) {
-            // Changement de nom
             const renameButton = document.createElement("button");
             renameButton.type = "button";
             renameButton.className = "rename-button";
             renameButton.textContent = "Changer le nom";
 
             renameButton.addEventListener("click", async () => {
-              const proposed = window.prompt(
+              const proposed = prompt(
                 `Nouveau nom d'utilisateur pour « ${user.username} » :`,
                 user.username
               );
-
               if (proposed === null) return;
 
               const username = proposed.trim();
 
               if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
-                listMessage.textContent =
-                  "Nom invalide : 3 à 30 caractères (lettres, chiffres, point, tiret ou tiret bas).";
+                listMessage.textContent = "Nom invalide : 3 à 30 caractères autorisés.";
                 return;
               }
 
-              if (
-                username.toLowerCase() === String(user.username).toLowerCase()
-              ) {
+              if (username.toLowerCase() === String(user.username).toLowerCase()) {
                 listMessage.textContent = "Le nom n'a pas changé.";
                 return;
               }
@@ -432,77 +450,58 @@
                   "admin-update-username",
                   { userId: user.id, username }
                 );
-
-                listMessage.textContent =
-                  result.message || "Nom d'utilisateur modifié.";
-
+                listMessage.textContent = result.message || "Nom modifié.";
                 await chargerUtilisateurs();
               } catch (error) {
-                listMessage.textContent =
-                  "Erreur : " + (error.message || "modification impossible.");
+                listMessage.textContent = "Erreur : " + error.message;
                 renameButton.disabled = false;
               }
             });
 
-            // Réinitialisation du mot de passe
             const passwordButton = document.createElement("button");
             passwordButton.type = "button";
             passwordButton.className = "password-button";
             passwordButton.textContent = "Changer le mot de passe";
 
             passwordButton.addEventListener("click", async () => {
-              const password = window.prompt(
+              const password = prompt(
                 `Nouveau mot de passe pour « ${user.username} » (10 caractères minimum) :`
               );
-
               if (password === null) return;
 
               if (password.length < 10) {
-                listMessage.textContent =
-                  "Le mot de passe doit contenir au moins 10 caractères.";
+                listMessage.textContent = "Le mot de passe doit contenir au moins 10 caractères.";
                 return;
               }
 
-              const confirmation = window.prompt(
-                "Confirme le nouveau mot de passe :"
-              );
-
+              const confirmation = prompt("Confirme le nouveau mot de passe :");
               if (confirmation === null) return;
 
               if (password !== confirmation) {
-                listMessage.textContent =
-                  "Les deux mots de passe ne correspondent pas.";
+                listMessage.textContent = "Les deux mots de passe ne correspondent pas.";
                 return;
               }
 
-              if (
-                !window.confirm(
-                  `Confirmer la réinitialisation du mot de passe de « ${user.username} » ?`
-                )
-              ) return;
+              if (!confirm(`Confirmer la réinitialisation du mot de passe de « ${user.username} » ?`)) {
+                return;
+              }
 
               passwordButton.disabled = true;
-              listMessage.textContent =
-                "Réinitialisation du mot de passe en cours...";
+              listMessage.textContent = "Réinitialisation en cours...";
 
               try {
                 const result = await appelerFonction(
                   "admin-reset-password",
                   { userId: user.id, password }
                 );
-
-                listMessage.textContent =
-                  result.message || "Mot de passe réinitialisé.";
+                listMessage.textContent = result.message || "Mot de passe réinitialisé.";
               } catch (error) {
-                listMessage.textContent =
-                  "Erreur : " +
-                  (error.message || "réinitialisation impossible.");
+                listMessage.textContent = "Erreur : " + error.message;
               } finally {
                 passwordButton.disabled = false;
               }
             });
 
-            // Activation et désactivation du compte
             const actionButton = document.createElement("button");
             actionButton.type = "button";
 
@@ -516,12 +515,11 @@
 
             actionButton.addEventListener("click", async () => {
               const newStatus = user.active !== true;
-
-              const confirmation = newStatus
+              const question = newStatus
                 ? `Réactiver le compte « ${user.username} » ?`
                 : `Désactiver le compte « ${user.username} » ?`;
 
-              if (!window.confirm(confirmation)) return;
+              if (!confirm(question)) return;
 
               actionButton.disabled = true;
               listMessage.textContent = "Modification du compte en cours...";
@@ -531,14 +529,10 @@
                   "update-user-status",
                   { userId: user.id, active: newStatus }
                 );
-
-                listMessage.textContent =
-                  result.message || "Statut du compte modifié.";
-
+                listMessage.textContent = result.message || "Statut modifié.";
                 await chargerUtilisateurs();
               } catch (error) {
-                listMessage.textContent =
-                  "Erreur : " + (error.message || "modification impossible.");
+                listMessage.textContent = "Erreur : " + error.message;
                 actionButton.disabled = false;
               }
             });
@@ -550,14 +544,81 @@
           userList.appendChild(row);
         }
       } catch (error) {
-        listMessage.textContent =
-          "Erreur : " + (error.message || "chargement impossible.");
+        listMessage.textContent = "Erreur : " + (error.message || "chargement impossible.");
       } finally {
         refreshButton.disabled = false;
       }
     }
 
-    // Création d'un utilisateur
+    async function chargerHistorique() {
+      if (!sessionValide) return;
+
+      historyRefreshButton.disabled = true;
+      historyMessage.textContent = "Chargement de l'historique...";
+      historyBody.replaceChildren();
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/historique_actions?select=id,username,action,details,created_at&order=created_at.desc&limit=100`,
+          {
+            method: "GET",
+            headers: headersAuth()
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !Array.isArray(result)) {
+          console.error("Erreur historique :", result);
+          throw new Error(
+            result && result.message
+              ? result.message
+              : "Impossible de lire l'historique. Vérifie les autorisations Supabase."
+          );
+        }
+
+        if (result.length === 0) {
+          historyMessage.textContent = "Aucune action enregistrée pour le moment.";
+          return;
+        }
+
+        for (const entry of result) {
+          const row = document.createElement("tr");
+
+          const usernameCell = document.createElement("td");
+          usernameCell.textContent = entry.username || "Utilisateur inconnu";
+
+          const actionCell = document.createElement("td");
+          actionCell.textContent = entry.action || "Action inconnue";
+
+          const detailsCell = document.createElement("td");
+          detailsCell.textContent = entry.details || "—";
+
+          const dateCell = document.createElement("td");
+          const date = new Date(entry.created_at);
+          dateCell.textContent = Number.isNaN(date.getTime())
+            ? "Date inconnue"
+            : date.toLocaleString("fr-FR", {
+                dateStyle: "short",
+                timeStyle: "medium"
+              });
+
+          row.append(usernameCell, actionCell, detailsCell, dateCell);
+          historyBody.appendChild(row);
+        }
+
+        historyMessage.textContent =
+          `${result.length} action(s) affichée(s), les plus récentes en premier.`;
+      } catch (error) {
+        console.error(error);
+        historyMessage.textContent = "Erreur : " + error.message;
+      } finally {
+        historyRefreshButton.disabled = false;
+      }
+    }
+
+    historyRefreshButton.addEventListener("click", chargerHistorique);
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
@@ -566,10 +627,8 @@
         return;
       }
 
-      const username =
-        document.getElementById("newUsername").value.trim();
-      const password =
-        document.getElementById("newPassword").value;
+      const username = document.getElementById("newUsername").value.trim();
+      const password = document.getElementById("newPassword").value;
 
       if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
         afficherMessage("Nom d'utilisateur invalide.", true);
@@ -577,10 +636,7 @@
       }
 
       if (password.length < 10) {
-        afficherMessage(
-          "Le mot de passe doit contenir au moins 10 caractères.",
-          true
-        );
+        afficherMessage("Le mot de passe doit contenir au moins 10 caractères.", true);
         return;
       }
 
@@ -588,10 +644,7 @@
       afficherMessage("Création du compte en cours...");
 
       try {
-        const result = await appelerFonction(
-          "create-user",
-          { username, password }
-        );
+        const result = await appelerFonction("create-user", { username, password });
 
         afficherMessage(
           `Le compte « ${result.user.username} » a été créé avec succès.`
@@ -600,10 +653,7 @@
         form.reset();
         await chargerUtilisateurs();
       } catch (error) {
-        afficherMessage(
-          error.message || "Une erreur inattendue est survenue.",
-          true
-        );
+        afficherMessage(error.message || "Une erreur inattendue est survenue.", true);
       } finally {
         createButton.disabled = false;
       }
@@ -613,7 +663,11 @@
 
     (async () => {
       const ok = await verifierSession();
-      if (ok) await chargerUtilisateurs();
+
+      if (ok) {
+        await chargerUtilisateurs();
+        await chargerHistorique();
+      }
     })();
   </script>
 </body>
