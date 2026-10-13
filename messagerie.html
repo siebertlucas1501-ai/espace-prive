@@ -1,410 +1,455 @@
 
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Messagerie - Espace privé</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#0f172a}
-header{background:#0f172a;color:white;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-h1{font-size:22px;margin:0}
-button,input,select,textarea{font:inherit}
-button{border:0;border-radius:8px;padding:10px 13px;cursor:pointer;font-weight:bold;background:#2563eb;color:white}
-button:disabled{opacity:.55;cursor:wait}
-.secondary{background:#e2e8f0;color:#0f172a}
-#logout{background:#ef4444}
-main{max-width:1150px;margin:24px auto;padding:0 14px}
-.panel{background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 15px #0f172a0d}
-.layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:16px}
-input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white}
-label{display:block;font-weight:bold;margin:12px 0 6px}
-button{margin:3px 2px}
-.conversation{display:block;width:100%;text-align:left;background:white;color:#0f172a;border:1px solid #e2e8f0;margin:8px 0;padding:12px}
-.conversation.selected{border-color:#2563eb;background:#eff6ff}
-.small{font-size:13px;color:#64748b}
-#messages{height:360px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;padding:12px;background:#f8fafc}
-.bubble{padding:10px 12px;border-radius:12px;background:#e2e8f0;margin:8px 0;max-width:85%;overflow-wrap:anywhere}
-.bubble.mine{margin-left:auto;background:#dbeafe}
-.bubble strong{display:block;font-size:12px;margin-bottom:5px}
-#status{white-space:pre-wrap;margin:12px 0}
+body{margin:0;background:#f1f5f9;color:#172033;font-family:Segoe UI,Arial,sans-serif}
+header{background:#172554;color:white;padding:20px}
+header h1{margin:0 0 5px;font-size:24px}
+header p{margin:0;color:#cbd5e1}
+main{max-width:1150px;margin:22px auto;padding:0 14px}
+button,a{cursor:pointer;font:inherit}
+button{border:0;border-radius:9px;padding:10px 13px;font-weight:650}
+.primary{background:#2563eb;color:white}
+.secondary{background:#e2e8f0;color:#1e293b}
+.danger{background:#fee2e2;color:#991b1b}
+.back{display:inline-block;text-decoration:none;color:#1d4ed8;margin-bottom:15px}
+.status{padding:11px;border-radius:9px;background:#dbeafe;color:#1e40af;margin-bottom:15px;overflow-wrap:anywhere}
+.status.error{background:#fee2e2;color:#991b1b}
+.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;min-height:600px}
+.panel{background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;min-width:0}
+.panelhead{padding:15px;border-bottom:1px solid #e2e8f0}
+.panelhead h2{font-size:17px;margin:0}
+.conversation-list{max-height:65vh;overflow-y:auto}
+.conversation{display:block;width:100%;text-align:left;padding:14px;border-radius:0;background:white;border-bottom:1px solid #edf0f5;color:#172033}
+.conversation:hover,.conversation.selected{background:#eff6ff}
+.convtitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700}
+.preview{font-size:13px;color:#64748b;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unread{background:#dc2626;color:white;border-radius:20px;min-width:22px;padding:3px 7px;text-align:center;font-size:12px}
+.chat{display:flex;flex-direction:column;min-height:600px}
+.chathead{padding:15px;border-bottom:1px solid #e2e8f0}
+.chathead h2{font-size:18px;margin:0 0 5px}
+.messages{padding:16px;flex:1;min-height:300px;max-height:60vh;overflow-y:auto;background:#f8fafc}
+.message{max-width:82%;margin:0 0 12px;padding:11px 13px;border-radius:12px;background:white;border:1px solid #e2e8f0;overflow-wrap:anywhere;white-space:pre-wrap}
+.message.mine{margin-left:auto;background:#dbeafe;border-color:#bfdbfe}
+.sender{font-size:12px;font-weight:700;color:#475569;margin-bottom:5px}
+.time{font-size:11px;color:#64748b;margin-top:7px;text-align:right}
+.composer{padding:13px;border-top:1px solid #e2e8f0}
+.composer form{display:flex;gap:8px}
+textarea,input,select{font:inherit;width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:white}
+textarea{resize:vertical;min-height:45px;max-height:150px}
+.composer button{align-self:flex-end}
+.small{font-size:12px;color:#64748b}
+.empty{padding:25px;text-align:center;color:#64748b}
+.newbox{padding:14px;border-top:1px solid #e2e8f0}
+.newbox h3{font-size:15px;margin:0 0 10px}
+.newbox input,.newbox select{margin-bottom:8px}
+.newbox button{width:100%}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .hidden{display:none!important}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-@media(max-width:750px){.layout{grid-template-columns:1fr}#messages{height:300px}}
+@media(max-width:750px){
+ .layout{grid-template-columns:1fr}
+ .conversation-list{max-height:300px}
+ .chat{min-height:500px}
+ .messages{max-height:50vh}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>💬 Messagerie de l’espace privé</h1>
-  <div>
-    <button class="secondary" id="homeButton">Accueil</button>
-    <button id="logout">Se déconnecter</button>
-  </div>
+  <h1>💬 Messagerie</h1>
+  <p>Conversations et messages de ton espace privé</p>
 </header>
 
 <main>
-  <section class="panel">
-    <strong>Connecté : <span id="username">...</span></strong>
-    <p class="small">Les conversations et messages sont réservés à leurs participants. L’administrateur peut consulter toutes les conversations.</p>
-    <div id="status" role="status" aria-live="polite">Vérification de la connexion…</div>
-  </section>
+  <a class="back" href="accueil.html">← Retour à l’accueil</a>
+  <div id="status" class="status">Vérification de la connexion…</div>
+
+  <div class="toolbar">
+    <span id="totalUnread">Messages non lus : 0</span>
+    <button id="refresh" class="secondary" type="button">↻ Actualiser</button>
+  </div>
 
   <div class="layout">
     <section class="panel">
-      <h2>Mes conversations</h2>
-      <button id="refreshButton" class="secondary">Actualiser</button>
-      <div id="conversationList" class="small">Chargement…</div>
-
-      <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0">
-      <h3>Nouvelle conversation</h3>
-      <label for="type">Type</label>
-      <select id="type">
-        <option value="privee">Privée — un destinataire</option>
-        <option value="groupe">Groupe — plusieurs personnes</option>
-      </select>
-      <div id="groupTitleBox" class="hidden">
-        <label for="groupTitle">Nom du groupe</label>
-        <input id="groupTitle" maxlength="100" placeholder="Ex. Groupe technologie">
+      <div class="panelhead">
+        <h2>Mes conversations</h2>
       </div>
-      <label for="users">Participants</label>
-      <select id="users" multiple size="7" aria-describedby="usersHelp"></select>
-      <p id="usersHelp" class="small">Sur ordinateur : maintiens Ctrl pour sélectionner plusieurs personnes. Tu seras ajouté automatiquement.</p>
-      <div class="actions">
-        <button id="createButton">Créer</button>
+      <div id="conversationList" class="conversation-list">
+        <div class="empty">Chargement…</div>
+      </div>
+
+      <div class="newbox">
+        <h3>Nouvelle conversation</h3>
+        <input id="newTitle" maxlength="120" placeholder="Titre de la conversation">
+        <select id="newType">
+          <option value="direct">Conversation privée</option>
+          <option value="group">Groupe</option>
+        </select>
+        <input id="participants" placeholder="UUID des participants, séparés par des virgules">
+        <p class="small">Pour le moment, les participants doivent être identifiés par leur UUID Supabase.</p>
+        <button id="createConversation" class="primary" type="button">Créer la conversation</button>
       </div>
     </section>
 
-    <section class="panel">
-      <h2 id="conversationTitle">Choisis une conversation</h2>
-      <div id="messages" aria-live="polite" class="small">Sélectionne une conversation à gauche.</div>
-      <form id="sendForm">
-        <label for="content">Ton message</label>
-        <textarea id="content" maxlength="5000" rows="3" placeholder="Écris ton message…" required></textarea>
-        <div class="actions">
-          <button id="sendButton" type="submit" disabled>Envoyer</button>
-          <button id="reloadMessages" type="button" class="secondary" disabled>Actualiser les messages</button>
-        </div>
-      </form>
+    <section class="panel chat">
+      <div class="chathead">
+        <h2 id="chatTitle">Choisis une conversation</h2>
+        <div id="chatSubtitle" class="small">Les nouveaux messages apparaîtront ici.</div>
+      </div>
+      <div id="messages" class="messages">
+        <div class="empty">Sélectionne une conversation dans la liste.</div>
+      </div>
+      <div class="composer">
+        <form id="sendForm">
+          <textarea id="messageInput" maxlength="10000" placeholder="Écris ton message…" required disabled></textarea>
+          <button class="primary" type="submit" id="sendButton" disabled>Envoyer</button>
+        </form>
+      </div>
     </section>
   </div>
-
-  <section id="adminPanel" class="panel hidden">
-    <h2>🔒 Administration — toutes les conversations</h2>
-    <p class="small">Cette partie est réservée au compte administrateur. Les messages affichés ici peuvent être lus par l’administrateur.</p>
-    <button id="adminRefresh" class="secondary">Actualiser la liste</button>
-    <div id="adminList">Chargement…</div>
-    <div id="adminMessages" class="hidden">
-      <h3 id="adminConversationTitle">Messages</h3>
-      <div id="adminMessageList"></div>
-    </div>
-  </section>
 </main>
 
 <script>
-"use strict";
-
 const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
 let accessToken = sessionStorage.getItem("access_token");
-const refreshToken = sessionStorage.getItem("refresh_token");
-let userData = {};
-let currentUserId = null;
-let currentConversationId = null;
-let isAdmin = false;
-let activeUsers = [];
+let refreshToken = sessionStorage.getItem("refresh_token");
+let currentUser = null;
+let supabase = null;
 let conversations = [];
+let currentConversationId = null;
+let currentMessages = [];
+let realtimeChannel = null;
+let refreshTimer = null;
+let busy = false;
 
 const $ = id => document.getElementById(id);
-const status = $("status");
+const unreadKey = () => "messagerie_last_read_" + currentUser.id;
+const unreadMap = () => {
+  try { return JSON.parse(localStorage.getItem(unreadKey()) || "{}"); }
+  catch { return {}; }
+};
+const saveUnreadMap = value => localStorage.setItem(unreadKey(), JSON.stringify(value));
 
-function setStatus(text, error=false) {
-  status.textContent = text;
-  status.style.color = error ? "#dc2626" : "#15803d";
+function status(message, error=false) {
+  $("status").textContent = message;
+  $("status").className = error ? "status error" : "status";
 }
-function authHeaders(extra={}) {
-  return {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${accessToken}`,
-    ...extra
-  };
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
 }
-async function requestJson(url, options={}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: authHeaders(options.headers || {})
+function formatTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return isNaN(date) ? "" : date.toLocaleString("fr-FR", {
+    day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"
   });
-  const text = await response.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch {}
-  if (!response.ok) {
-    const detail = data?.message || data?.hint || text || `HTTP ${response.status}`;
-    throw new Error(detail);
+}
+async function refreshSession() {
+  if (!refreshToken) throw new Error("Session absente. Reconnecte-toi.");
+
+  const response = await fetch(
+    SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token",
+    {
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({refresh_token:refreshToken})
+    }
+  );
+  if (!response.ok) throw new Error("Session expirée. Reconnecte-toi.");
+
+  const data = await response.json();
+  accessToken = data.access_token;
+  refreshToken = data.refresh_token;
+  sessionStorage.setItem("access_token", accessToken);
+  sessionStorage.setItem("refresh_token", refreshToken);
+}
+async function verifySession() {
+  if (!accessToken || !refreshToken) throw new Error("Connecte-toi avant d'ouvrir la messagerie.");
+
+  let response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+    headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer " + accessToken}
+  });
+  if (response.status === 401) {
+    await refreshSession();
+    response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer " + accessToken}
+    });
   }
+  if (!response.ok) throw new Error("Connexion invalide. Reconnecte-toi.");
+  currentUser = await response.json();
+
+  const profileResponse = await fetch(
+    SUPABASE_URL + "/rest/v1/profiles?id=eq." +
+    encodeURIComponent(currentUser.id) + "&select=id,username,role,active",
+    {headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer " + accessToken}}
+  );
+  if (!profileResponse.ok) throw new Error("Impossible de vérifier ton profil.");
+
+  const profiles = await profileResponse.json();
+  if (!profiles.length || profiles[0].active !== true) {
+    throw new Error("Ton compte est inactif ou introuvable.");
+  }
+
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+    global:{headers:{"Authorization":"Bearer " + accessToken}}
+  });
+  supabase.realtime.setAuth(accessToken);
+}
+async function rpc(name, args={}) {
+  const {data,error} = await supabase.rpc(name,args);
+  if (error) throw error;
   return data;
 }
-function rpc(name, args) {
-  return requestJson(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(args)
-  });
-}
-function escapeText(value) {
-  return String(value ?? "");
-}
-function selectedUserIds() {
-  return Array.from($("users").selectedOptions).map(option => option.value);
-}
-function afficherListeVide(container, text) {
-  container.replaceChildren();
-  const p = document.createElement("p");
-  p.className = "small";
-  p.textContent = text;
-  container.appendChild(p);
-}
-function showMessageBubble(container, item, mine=false) {
-  const bubble = document.createElement("div");
-  bubble.className = "bubble" + (mine ? " mine" : "");
-  const author = document.createElement("strong");
-  const date = item.created_at ? new Date(item.created_at).toLocaleString("fr-FR") : "";
-  author.textContent = `${item.expediteur || item.username || "Utilisateur"} · ${date}`;
-  const content = document.createElement("div");
-  content.textContent = escapeText(item.contenu);
-  bubble.append(author, content);
-  container.appendChild(bubble);
-}
-async function checkSession() {
-  if (!accessToken || !refreshToken || !sessionStorage.getItem("user")) {
-    location.replace("index.html");
-    return false;
-  }
 
-  const authUser = await requestJson(`${SUPABASE_URL}/auth/v1/user`);
-  currentUserId = authUser.id;
-  userData = JSON.parse(sessionStorage.getItem("user"));
-  $("username").textContent = userData.username || "Utilisateur";
-  isAdmin = userData.role === "admin";
+function messagePreview(conversation) {
+  const last = conversation.dernier_message;
+  if (!last) return "Aucun message";
+  if (typeof last === "string") return last;
+  return last.contenu || last.message || "Message";
+}
+function getUnreadCount(conversation) {
+  const map = unreadMap();
+  const lastRead = map[String(conversation.id)] || null;
+  const last = conversation.dernier_message;
+  if (!last) return 0;
 
-  // Vérifier aussi que le profil existe et est actif.
-  const profiles = await requestJson(
-    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(currentUserId)}&select=id,username,role,active`
-  );
-  if (!profiles?.length || profiles[0].active !== true) {
-    sessionStorage.clear();
-    location.replace("index.html");
-    return false;
-  }
-  isAdmin = profiles[0].role === "admin";
-  if (isAdmin) $("adminPanel").classList.remove("hidden");
-  return true;
+  // Le RPC peut renvoyer le dernier message sous forme de texte ou d'objet.
+  // Un texte seul ne permet pas de calculer un nombre exact.
+  if (typeof last === "string") return 0;
+
+  const lastDate = last.created_at;
+  const lastSender = last.sender_id;
+  if (!lastDate || lastSender === currentUser.id) return 0;
+  if (!lastRead) return 1;
+  return new Date(lastDate) > new Date(lastRead) ? 1 : 0;
 }
-async function chargerUtilisateurs() {
-  const data = await requestJson(
-    `${SUPABASE_URL}/rest/v1/profiles?select=id,username,active&active=eq.true&order=username.asc`
-  );
-  activeUsers = data.filter(u => u.id !== currentUserId);
-  const select = $("users");
-  select.replaceChildren();
-  for (const u of activeUsers) {
-    const option = document.createElement("option");
-    option.value = u.id;
-    option.textContent = u.username;
-    select.appendChild(option);
-  }
-}
-async function chargerConversations() {
-  $("conversationList").textContent = "Chargement…";
-  const data = await rpc("lister_mes_conversations", {});
-  conversations = data || [];
+function renderConversations() {
   const list = $("conversationList");
-  list.replaceChildren();
-
   if (!conversations.length) {
-    afficherListeVide(list, "Aucune conversation. Crée la première !");
+    list.innerHTML = '<div class="empty">Aucune conversation pour le moment.</div>';
+    $("totalUnread").textContent = "Messages non lus : 0";
     return;
   }
 
-  for (const c of conversations) {
-    const btn = document.createElement("button");
-    btn.className = "conversation" + (String(c.id) === String(currentConversationId) ? " selected" : "");
-    const title = c.titre || (c.type === "privee" ? "Conversation privée" : "Groupe");
-    const preview = c.dernier_message ? `\n${c.dernier_message}` : "\nAucun message";
-    btn.textContent = title + preview;
-    btn.addEventListener("click", () => ouvrirConversation(c));
-    list.appendChild(btn);
-  }
+  const total = conversations.reduce((sum,c) => sum + getUnreadCount(c), 0);
+  $("totalUnread").textContent = "Conversations avec un message non lu : " + total;
+
+  list.innerHTML = conversations.map(c => {
+    const id = String(c.id);
+    const unread = getUnreadCount(c);
+    const selected = id === String(currentConversationId);
+    return `<button type="button" class="conversation ${selected ? "selected" : ""}" data-conversation="${escapeHTML(id)}">
+      <div class="convtitle">
+        <span>${escapeHTML(c.titre || "Conversation sans titre")}</span>
+        ${unread ? `<span class="unread">${unread}</span>` : ""}
+      </div>
+      <div class="preview">${escapeHTML(messagePreview(c))}</div>
+    </button>`;
+  }).join("");
 }
-async function ouvrirConversation(c) {
-  currentConversationId = c.id;
-  $("conversationTitle").textContent = c.titre || (c.type === "privee" ? "Conversation privée" : "Groupe");
-  $("messages").textContent = "Chargement des messages…";
-  $("sendButton").disabled = false;
-  $("reloadMessages").disabled = false;
-  try {
-    await chargerMessages();
-    await chargerConversations();
-  } catch (e) {
-    setStatus("Impossible de charger les messages : " + e.message, true);
-  }
+async function loadConversations() {
+  conversations = await rpc("lister_mes_conversations", {});
+  if (!Array.isArray(conversations)) conversations = [];
+  renderConversations();
 }
-async function chargerMessages() {
+function renderMessages() {
+  const box = $("messages");
+  if (!currentMessages.length) {
+    box.innerHTML = '<div class="empty">Aucun message dans cette conversation.</div>';
+    return;
+  }
+  box.innerHTML = currentMessages.map(m => {
+    const mine = m.sender_id === currentUser.id;
+    const sender = mine ? "Moi" : (m.sender_username || m.username || "Utilisateur");
+    return `<article class="message ${mine ? "mine" : ""}">
+      <div class="sender">${escapeHTML(sender)}</div>
+      <div>${escapeHTML(m.contenu || "")}</div>
+      <div class="time">${escapeHTML(formatTime(m.created_at))}</div>
+    </article>`;
+  }).join("");
+  box.scrollTop = box.scrollHeight;
+}
+function markConversationRead() {
   if (!currentConversationId) return;
-  const data = await rpc("lire_messages", {p_conversation_id: currentConversationId});
-  const container = $("messages");
-  container.replaceChildren();
-  if (!data?.length) {
-    afficherListeVide(container, "Aucun message pour le moment.");
-    return;
+  const latest = currentMessages.reduce((max,m) => {
+    if (!m.created_at) return max;
+    return !max || new Date(m.created_at) > new Date(max) ? m.created_at : max;
+  }, null);
+  if (latest) {
+    const map = unreadMap();
+    map[String(currentConversationId)] = latest;
+    saveUnreadMap(map);
   }
-  for (const m of data) {
-    const profile = await requestJson(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(m.sender_id)}&select=username`
-    );
-    showMessageBubble(container, {
-      ...m,
-      expediteur: profile?.[0]?.username || "Utilisateur"
-    }, m.sender_id === currentUserId);
-  }
-  container.scrollTop = container.scrollHeight;
+  renderConversations();
 }
-async function creerConversation() {
-  const type = $("type").value;
-  const participants = selectedUserIds();
-  if (type === "privee" && participants.length !== 1) {
-    setStatus("Choisis exactement un destinataire pour une conversation privée.", true);
-    return;
-  }
-  if (type === "groupe" && participants.length < 2) {
-    setStatus("Choisis au moins deux personnes pour le groupe.", true);
-    return;
-  }
-  const titre = $("groupTitle").value.trim();
-  if (type === "groupe" && !titre) {
-    setStatus("Donne un nom au groupe.", true);
-    return;
-  }
-  $("createButton").disabled = true;
+async function openConversation(id) {
+  currentConversationId = id;
+  const conversation = conversations.find(c => String(c.id) === String(id));
+  $("chatTitle").textContent = conversation?.titre || "Conversation";
+  $("chatSubtitle").textContent = "Chargement des messages…";
+  $("messageInput").disabled = true;
+  $("sendButton").disabled = true;
+  renderConversations();
+
   try {
-    const id = await rpc("creer_conversation", {
-      p_titre: titre,
-      p_type: type,
-      p_participants: participants
-    });
-    currentConversationId = id;
-    setStatus("Conversation créée !");
-    await chargerConversations();
-    const c = conversations.find(x => String(x.id) === String(id));
-    if (c) await ouvrirConversation(c);
-    $("users").selectedIndex = -1;
-    $("groupTitle").value = "";
-  } catch (e) {
-    setStatus("Impossible de créer la conversation : " + e.message, true);
-  } finally {
-    $("createButton").disabled = false;
+    currentMessages = await rpc("lire_messages", {p_conversation_id:id});
+    if (!Array.isArray(currentMessages)) currentMessages = [];
+    renderMessages();
+    markConversationRead();
+    $("chatSubtitle").textContent = currentMessages.length + " message(s)";
+    $("messageInput").disabled = false;
+    $("sendButton").disabled = false;
+    $("messageInput").focus();
+    status("Conversation ouverte.");
+  } catch (error) {
+    status("Impossible de lire les messages : " + error.message, true);
   }
 }
-async function envoyerMessage(event) {
-  event.preventDefault();
-  if (!currentConversationId) {
-    setStatus("Choisis d'abord une conversation.", true);
-    return;
+async function refreshCurrentMessages() {
+  if (!currentConversationId) return;
+  const selectedId = currentConversationId;
+  try {
+    const data = await rpc("lire_messages", {p_conversation_id:selectedId});
+    if (String(currentConversationId) !== String(selectedId)) return;
+    currentMessages = Array.isArray(data) ? data : [];
+    renderMessages();
+    markConversationRead();
+    $("chatSubtitle").textContent = currentMessages.length + " message(s)";
+  } catch (error) {
+    console.error("Actualisation des messages :", error);
   }
-  const contenu = $("content").value.trim();
+}
+function subscribeRealtime() {
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
+  realtimeChannel = supabase
+    .channel("messagerie-" + currentUser.id)
+    .on("postgres_changes", {
+      event:"INSERT",
+      schema:"public",
+      table:"messages"
+    }, async payload => {
+      const message = payload.new || {};
+      // Recharger la liste pour rafraîchir le dernier message et les compteurs.
+      try {
+        await loadConversations();
+        if (currentConversationId &&
+            String(message.conversation_id) === String(currentConversationId)) {
+          await refreshCurrentMessages();
+        }
+      } catch (error) {
+        console.error("Mise à jour temps réel :", error);
+      }
+    })
+    .subscribe(state => {
+      if (state === "SUBSCRIBED") status("Messagerie connectée en temps réel.");
+      if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") {
+        status("Le temps réel est indisponible. L'actualisation automatique reste active.", true);
+      }
+    });
+}
+$("conversationList").addEventListener("click", event => {
+  const button = event.target.closest("[data-conversation]");
+  if (button) openConversation(button.dataset.conversation);
+});
+$("sendForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!currentConversationId || busy) return;
+
+  const contenu = $("messageInput").value.trim();
   if (!contenu) return;
+
+  busy = true;
   $("sendButton").disabled = true;
   try {
     await rpc("envoyer_message", {
-      p_conversation_id: currentConversationId,
-      p_contenu: contenu
+      p_conversation_id:currentConversationId,
+      p_contenu:contenu
     });
-    $("content").value = "";
-    await chargerMessages();
-    await chargerConversations();
-    setStatus("Message envoyé.");
-  } catch (e) {
-    setStatus("Impossible d'envoyer le message : " + e.message, true);
+    $("messageInput").value = "";
+    await refreshCurrentMessages();
+    await loadConversations();
+    status("Message envoyé.");
+  } catch (error) {
+    status("Impossible d'envoyer le message : " + error.message, true);
   } finally {
-    $("sendButton").disabled = false;
+    busy = false;
+    $("sendButton").disabled = !currentConversationId;
   }
-}
-async function adminChargerConversations() {
-  if (!isAdmin) return;
-  const container = $("adminList");
-  container.textContent = "Chargement…";
-  try {
-    const data = await rpc("admin_lister_conversations", {});
-    container.replaceChildren();
-    if (!data?.length) {
-      afficherListeVide(container, "Aucune conversation.");
-      return;
-    }
-    for (const c of data) {
-      const btn = document.createElement("button");
-      btn.className = "conversation";
-      btn.textContent = `${c.titre || "Conversation privée"} — ${c.createur} — ${c.nombre_messages} message(s)`;
-      btn.addEventListener("click", () => adminLireConversation(c));
-      container.appendChild(btn);
-    }
-  } catch (e) {
-    container.textContent = "Erreur administrateur : " + e.message;
-  }
-}
-async function adminLireConversation(c) {
-  $("adminMessages").classList.remove("hidden");
-  $("adminConversationTitle").textContent = c.titre || "Conversation privée";
-  const container = $("adminMessageList");
-  container.textContent = "Chargement…";
-  try {
-    const data = await rpc("admin_lire_messages", {p_conversation_id: c.id});
-    container.replaceChildren();
-    if (!data?.length) {
-      afficherListeVide(container, "Aucun message.");
-      return;
-    }
-    for (const m of data) showMessageBubble(container, m);
-  } catch (e) {
-    container.textContent = "Erreur : " + e.message;
-  }
-}
+});
+$("createConversation").addEventListener("click", async () => {
+  const titre = $("newTitle").value.trim();
+  const type = $("newType").value;
+  const participants = $("participants").value
+    .split(",").map(v => v.trim()).filter(Boolean);
 
-$("type").addEventListener("change", () => {
-  $("groupTitleBox").classList.toggle("hidden", $("type").value !== "groupe");
-});
-$("createButton").addEventListener("click", creerConversation);
-$("sendForm").addEventListener("submit", envoyerMessage);
-$("refreshButton").addEventListener("click", async () => {
+  if (!titre) return status("Indique un titre de conversation.", true);
+
   try {
-    await chargerConversations();
-    setStatus("Liste actualisée.");
-  } catch (e) {
-    setStatus("Erreur : " + e.message, true);
+    status("Création de la conversation…");
+    const result = await rpc("creer_conversation", {
+      p_titre:titre,
+      p_type:type,
+      p_participants:participants
+    });
+    $("newTitle").value = "";
+    $("participants").value = "";
+    await loadConversations();
+
+    const created = Array.isArray(result) ? result[0] : result;
+    const id = created?.id || created?.conversation_id || created;
+    const found = conversations.find(c => String(c.id) === String(id));
+    if (found) await openConversation(found.id);
+    status("Demande de création envoyée. Si la conversation n'apparaît pas, vérifie le format de retour de la fonction RPC.");
+  } catch (error) {
+    status("Impossible de créer la conversation : " + error.message, true);
   }
 });
-$("reloadMessages").addEventListener("click", async () => {
-  try { await chargerMessages(); setStatus("Messages actualisés."); }
-  catch (e) { setStatus("Erreur : " + e.message, true); }
+$("refresh").addEventListener("click", async () => {
+  try {
+    await loadConversations();
+    await refreshCurrentMessages();
+    status("Messagerie actualisée.");
+  } catch (error) {
+    status("Erreur d'actualisation : " + error.message, true);
+  }
 });
-$("adminRefresh").addEventListener("click", adminChargerConversations);
-$("homeButton").addEventListener("click", () => location.href = "accueil.html");
-$("logout").addEventListener("click", () => {
-  sessionStorage.clear();
-  location.replace("index.html");
+window.addEventListener("beforeunload", () => {
+  if (refreshTimer) clearInterval(refreshTimer);
+  if (realtimeChannel && supabase) supabase.removeChannel(realtimeChannel);
 });
 
-(async () => {
+(async function init() {
   try {
-    if (await checkSession()) {
-      await chargerUtilisateurs();
-      await chargerConversations();
-      if (isAdmin) await adminChargerConversations();
-      setStatus("Messagerie prête.");
-    }
-  } catch (e) {
-    console.error(e);
-    setStatus("Erreur de chargement : " + e.message, true);
+    await verifySession();
+    await loadConversations();
+    subscribeRealtime();
+
+    // Secours si Realtime est déconnecté ou si un événement est manqué.
+    refreshTimer = setInterval(async () => {
+      try {
+        await loadConversations();
+        await refreshCurrentMessages();
+      } catch (error) {
+        console.error("Actualisation automatique :", error);
+      }
+    }, 15000);
+  } catch (error) {
+    status(error.message || String(error), true);
   }
 })();
 </script>
