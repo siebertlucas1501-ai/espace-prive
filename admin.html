@@ -4,243 +4,277 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administration - Mon espace privé</title>
-
+  <title>Administration - Espace privé</title>
   <style>
+    :root {
+      --bg: #f3f6fc;
+      --surface: #fff;
+      --text: #172033;
+      --muted: #64748b;
+      --primary: #3157d5;
+      --border: #e4eaf4;
+      --green: #087f72;
+      --red: #dc2626;
+    }
+
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f1f5f9;
-      color: #0f172a;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
     }
 
     header {
       background: #0f172a;
       color: white;
-      padding: 18px 22px;
+      padding: 18px clamp(16px, 4vw, 40px);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
-    header h1 { margin: 0; font-size: 22px; }
-    main { max-width: 1100px; margin: 30px auto; padding: 0 16px; }
+    header h1 { margin: 0; font-size: 23px; }
+
+    main {
+      width: min(1200px, calc(100% - 28px));
+      margin: 26px auto 50px;
+    }
 
     .panel {
-      background: white;
-      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(17px, 3vw, 25px);
       margin-bottom: 20px;
-      border-radius: 14px;
-      box-shadow: 0 4px 15px #0f172a0d;
+      box-shadow: 0 8px 28px rgba(22, 34, 66, .06);
     }
 
-    label { display: block; margin: 14px 0 6px; font-weight: bold; }
+    h2 { margin: 0 0 8px; }
+    .muted { color: var(--muted); }
 
-    input {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font: inherit;
-    }
+    button, input, select { font: inherit; }
 
-    button {
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 15px;
-      font: inherit;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:disabled { opacity: .6; cursor: wait; }
-
-    #createButton { margin-top: 18px; background: #2563eb; color: white; }
-    #backButton, #refreshButton, #historyRefreshButton {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-
-    #message, #listMessage, #historyMessage {
-      margin-top: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .muted { color: #64748b; }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 18px;
-    }
-
-    .stat-card {
-      padding: 18px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: #f8fafc;
-    }
-
-    .stat-label { color: #64748b; font-size: 14px; margin-bottom: 10px; }
-    .stat-number { font-size: 30px; font-weight: bold; }
-    .stat-detail { color: #64748b; font-size: 12px; margin-top: 7px; }
-
-    .user-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .user-name { font-weight: bold; overflow-wrap: anywhere; }
-
-    .tag {
+    button, .link-button {
       display: inline-block;
-      padding: 5px 9px;
-      border-radius: 999px;
-      font-size: 13px;
-      background: #e2e8f0;
-      white-space: nowrap;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 13px;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
     }
 
-    .tag.admin { background: #dbeafe; color: #1d4ed8; }
-    .tag.active { background: #dcfce7; color: #166534; }
-    .tag.inactive { background: #fee2e2; color: #991b1b; }
+    button:disabled { opacity: .55; cursor: wait; }
+    button:hover, .link-button:hover { filter: brightness(.94); }
 
-    .user-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .user-actions button { font-size: 13px; }
-    .disable-button { background: #fee2e2; color: #991b1b; }
-    .enable-button { background: #dcfce7; color: #166534; }
-    .rename-button { background: #dbeafe; color: #1d4ed8; }
-    .password-button { background: #fef3c7; color: #92400e; }
+    .secondary { background: #e8edff; color: #2949b7; }
+    .green { background: var(--green); }
+    .red { background: var(--red); }
 
-    .history-wrap { overflow-x: auto; margin-top: 14px; }
-    .history-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+    label {
+      display: block;
+      font-weight: 700;
+      margin: 13px 0 6px;
+    }
 
-    .history-table th,
-    .history-table td {
-      text-align: left;
-      padding: 12px 10px;
-      border-bottom: 1px solid #e2e8f0;
-      vertical-align: top;
+    input, select {
+      width: 100%;
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fbfcff;
+      color: var(--text);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 14px;
+    }
+
+    .form-actions, .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .toolbar { justify-content: space-between; }
+
+    #status {
+      margin-top: 12px;
       overflow-wrap: anywhere;
     }
 
-    .history-table th { background: #f8fafc; color: #475569; }
-    .history-table td { font-size: 14px; }
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
 
-    @media (max-width: 700px) {
-      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      header { padding: 16px; }
-      header h1 { font-size: 19px; }
-      .panel { padding: 18px; }
-      .user-row { grid-template-columns: 1fr auto; }
-      .user-row .status, .user-row .user-actions { grid-column: 1 / -1; }
-      #createButton { width: 100%; }
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #f8faff;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    td { font-size: 14px; }
+    td select { min-width: 115px; }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #e8edff;
+      color: #2949b7;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .badge.off { background: #fee2e2; color: #991b1b; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 20px; }
+      header .link-button { width: 100%; text-align: center; }
+      .form-grid { grid-template-columns: 1fr; }
+      main { width: calc(100% - 20px); margin-top: 15px; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>⚙️ Administration</h1>
-    <button id="backButton" type="button">Retour à l'accueil</button>
+    <h1>🛡️ Administration</h1>
+    <a class="link-button secondary" href="accueil.html">← Retour à l'accueil</a>
   </header>
 
   <main>
     <section class="panel">
-      <h2>📊 Tableau de bord</h2>
-      <p class="muted">Résumé des comptes enregistrés sur ton espace privé.</p>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total des comptes</div>
-          <div class="stat-number" id="statTotal">—</div>
-          <div class="stat-detail">Tous les comptes</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">Comptes actifs</div>
-          <div class="stat-number" id="statActive">—</div>
-          <div class="stat-detail">Accès activé</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">Comptes désactivés</div>
-          <div class="stat-number" id="statInactive">—</div>
-          <div class="stat-detail">Accès désactivé</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-label">Administrateurs</div>
-          <div class="stat-number" id="statAdmins">—</div>
-          <div class="stat-detail">Comptes administrateurs</div>
-        </div>
+      <h2>Gestion de l'espace privé</h2>
+      <p class="muted">
+        Crée les comptes, gère les accès et consulte l'activité.
+        Les utilisateurs se connectent avec un identifiant et un mot de passe,
+        sans adresse e-mail personnelle.
+      </p>
+      <div id="status" role="status" aria-live="polite">
+        Vérification des droits...
       </div>
     </section>
 
-    <section class="panel" id="creationPanel">
-      <h2>Créer un utilisateur</h2>
-      <p class="muted">Crée un compte avec un nom d'utilisateur et un mot de passe. Aucun courriel personnel n'est nécessaire.</p>
-
+    <section id="createPanel" class="panel hidden">
+      <h2>➕ Créer un utilisateur</h2>
       <form id="createForm">
-        <label for="newUsername">Nom d'utilisateur</label>
-        <input id="newUsername" name="username" minlength="3" maxlength="30"
-          pattern="[a-zA-Z0-9._-]{3,30}" autocomplete="off" required>
+        <div class="form-grid">
+          <div>
+            <label for="newUsername">Identifiant</label>
+            <input id="newUsername" required maxlength="60"
+                   autocomplete="off" placeholder="Ex. : eleve01">
+          </div>
+          <div>
+            <label for="newPassword">Mot de passe provisoire</label>
+            <input id="newPassword" required minlength="8"
+                   type="password" autocomplete="new-password">
+          </div>
+        </div>
 
-        <label for="newPassword">Mot de passe provisoire</label>
-        <input id="newPassword" name="password" type="password"
-          minlength="10" autocomplete="new-password" required>
-
-        <button id="createButton" type="submit">Créer le compte</button>
+        <div class="form-actions">
+          <button id="createButton" type="submit" class="green">
+            Créer le compte
+          </button>
+        </div>
       </form>
-
-      <div id="message" role="status" aria-live="polite"></div>
+      <p class="muted">
+        Le compte est créé par la fonction serveur Supabase existante.
+        Ne partage pas les mots de passe dans l'historique.
+      </p>
     </section>
 
-    <section class="panel">
-      <h2>👥 Utilisateurs existants</h2>
-      <p class="muted">Consulte les comptes, modifie leur nom, réinitialise leur mot de passe et gère leur accès. Les comptes administrateurs ne peuvent pas être modifiés ici.</p>
+    <section id="usersPanel" class="panel hidden">
+      <div class="toolbar">
+        <div>
+          <h2>👥 Utilisateurs</h2>
+          <div id="usersCount" class="muted"></div>
+        </div>
+        <button id="refreshUsers" class="secondary" type="button">
+          Actualiser
+        </button>
+      </div>
 
-      <button id="refreshButton" type="button">Actualiser la liste</button>
-      <div id="listMessage" role="status" aria-live="polite">Chargement des utilisateurs...</div>
-      <div id="userList"></div>
-    </section>
+      <label for="userSearch">Rechercher un utilisateur</label>
+      <input id="userSearch" type="search"
+             placeholder="Identifiant...">
 
-    <section class="panel">
-      <h2>📋 Historique des actions</h2>
-      <p class="muted">Consulte les connexions, les ajouts de fichiers et les autres actions enregistrées.</p>
-
-      <button id="historyRefreshButton" type="button">Actualiser l'historique</button>
-      <div id="historyMessage" class="muted" role="status" aria-live="polite">Chargement de l'historique...</div>
-
-      <div class="history-wrap">
-        <table class="history-table">
+      <div class="table-wrap">
+        <table>
           <thead>
             <tr>
-              <th>Utilisateur</th>
-              <th>Action</th>
-              <th>Détails</th>
-              <th>Date et heure</th>
+              <th>Identifiant</th>
+              <th>Rôle</th>
+              <th>État</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="historyBody"></tbody>
+          <tbody id="usersBody">
+            <tr><td colspan="4">Chargement...</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <section class="panel">
-      <h2>Accès administrateur</h2>
-      <p id="sessionStatus" class="muted">Vérification de la session...</p>
-      <button id="loginButton" type="button" hidden>Retour à la connexion</button>
+    <section id="historyPanel" class="panel hidden">
+      <div class="toolbar">
+        <div>
+          <h2>📋 Historique des actions</h2>
+          <div id="historyCount" class="muted"></div>
+        </div>
+        <button id="refreshHistory" class="secondary" type="button">
+          Actualiser
+        </button>
+      </div>
+
+      <label for="historySearch">Rechercher dans l'activité</label>
+      <input id="historySearch" type="search"
+             placeholder="Utilisateur, action ou détails...">
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Utilisateur</th>
+              <th>Action</th>
+              <th>Détails</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="4">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </main>
 
@@ -248,425 +282,453 @@
     const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
     const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
-    const accessToken = sessionStorage.getItem("access_token");
-    const userText = sessionStorage.getItem("user");
+    let accessToken = sessionStorage.getItem("access_token");
+    let refreshToken = sessionStorage.getItem("refresh_token");
+    let currentUserId = null;
+    let profiles = [];
+    let activity = [];
 
-    const form = document.getElementById("createForm");
-    const createButton = document.getElementById("createButton");
-    const message = document.getElementById("message");
-    const sessionStatus = document.getElementById("sessionStatus");
-    const loginButton = document.getElementById("loginButton");
-    const userList = document.getElementById("userList");
-    const listMessage = document.getElementById("listMessage");
-    const refreshButton = document.getElementById("refreshButton");
-    const historyRefreshButton = document.getElementById("historyRefreshButton");
-    const historyMessage = document.getElementById("historyMessage");
-    const historyBody = document.getElementById("historyBody");
+    const $ = id => document.getElementById(id);
 
-    let sessionValide = false;
-
-    function afficherMessage(texte, erreur = false) {
-      message.style.color = erreur ? "#dc2626" : "#15803d";
-      message.textContent = texte;
+    function status(text, error = false) {
+      $("status").textContent = text;
+      $("status").style.color = error ? "#dc2626" : "#087f72";
     }
 
-    function headersAuth() {
+    function authHeaders() {
       return {
         "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
+        "Authorization": `Bearer ${accessToken}`
       };
     }
 
-    document.getElementById("backButton").addEventListener("click", () => {
-      window.location.href = "accueil.html";
-    });
-
-    loginButton.addEventListener("click", () => {
-      window.location.href = "index.html";
-    });
-
-    async function verifierSession() {
-      if (!accessToken || !userText) {
-        sessionStatus.textContent =
-          "Aucune session trouvée dans cet onglet. Connecte-toi d'abord.";
-        loginButton.hidden = false;
-        form.hidden = true;
-        refreshButton.disabled = true;
-        historyRefreshButton.disabled = true;
-        return false;
-      }
-
-      try {
-        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": `Bearer ${accessToken}`
-          }
-        });
-
-        if (!response.ok) {
-          sessionStatus.textContent = "Session expirée ou invalide. Reconnecte-toi.";
-          loginButton.hidden = false;
-          form.hidden = true;
-          refreshButton.disabled = true;
-          historyRefreshButton.disabled = true;
-          return false;
-        }
-
-        const user = JSON.parse(userText);
-
-        if (!user || user.role !== "admin") {
-          sessionStatus.textContent = "Ce compte n'est pas administrateur.";
-          form.hidden = true;
-          refreshButton.disabled = true;
-          historyRefreshButton.disabled = true;
-          return false;
-        }
-
-        sessionValide = true;
-        sessionStatus.textContent =
-          "Session vérifiée. Bonjour " +
-          (user.username || "administrateur") + ".";
-
-        return true;
-      } catch (error) {
-        console.error(error);
-        sessionStatus.textContent =
-          "Impossible de vérifier la session. Vérifie ta connexion.";
-        form.hidden = true;
-        refreshButton.disabled = true;
-        historyRefreshButton.disabled = true;
-        return false;
-      }
-    }
-
-    async function appelerFonction(nom, donnees) {
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/${nom}`,
-        {
-          method: "POST",
-          headers: headersAuth(),
-          body: JSON.stringify(donnees)
-        }
-      );
-
-      let result;
-
-      try {
-        result = await response.json();
-      } catch {
-        throw new Error("Réponse serveur illisible.");
-      }
-
-      if (!response.ok || result.success !== true) {
-        throw new Error(result.error || `La fonction ${nom} a échoué.`);
-      }
-
-      return result;
-    }
-
-    async function chargerUtilisateurs() {
-      if (!sessionValide) return;
-
-      refreshButton.disabled = true;
-      userList.replaceChildren();
-      listMessage.textContent = "Chargement des utilisateurs...";
-
-      try {
-        const result = await appelerFonction("list-users", {});
-
-        if (!Array.isArray(result.users)) {
-          throw new Error("La réponse du serveur ne contient pas une liste valide.");
-        }
-
-        const total = result.users.length;
-        const actifs = result.users.filter(user => user.active === true).length;
-        const admins = result.users.filter(user => user.role === "admin").length;
-
-        document.getElementById("statTotal").textContent = total;
-        document.getElementById("statActive").textContent = actifs;
-        document.getElementById("statInactive").textContent = total - actifs;
-        document.getElementById("statAdmins").textContent = admins;
-
-        if (total === 0) {
-          listMessage.textContent = "Aucun utilisateur trouvé.";
-          return;
-        }
-
-        listMessage.textContent = `${total} compte(s) trouvé(s).`;
-        const currentUser = JSON.parse(userText);
-
-        for (const user of result.users) {
-          const row = document.createElement("div");
-          row.className = "user-row";
-
-          const name = document.createElement("div");
-          name.className = "user-name";
-          name.textContent = user.username || "Nom inconnu";
-
-          const role = document.createElement("span");
-          role.className = "tag" + (user.role === "admin" ? " admin" : "");
-          role.textContent = user.role === "admin" ? "Administrateur" : "Utilisateur";
-
-          const status = document.createElement("span");
-          status.className = "tag status " +
-            (user.active === true ? "active" : "inactive");
-          status.textContent = user.active === true ? "Actif" : "Désactivé";
-
-          const actions = document.createElement("div");
-          actions.className = "user-actions";
-
-          if (user.role === "user" && user.id !== currentUser.id) {
-            const renameButton = document.createElement("button");
-            renameButton.type = "button";
-            renameButton.className = "rename-button";
-            renameButton.textContent = "Changer le nom";
-
-            renameButton.addEventListener("click", async () => {
-              const proposed = prompt(
-                `Nouveau nom d'utilisateur pour « ${user.username} » :`,
-                user.username
-              );
-              if (proposed === null) return;
-
-              const username = proposed.trim();
-
-              if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
-                listMessage.textContent = "Nom invalide : 3 à 30 caractères autorisés.";
-                return;
-              }
-
-              if (username.toLowerCase() === String(user.username).toLowerCase()) {
-                listMessage.textContent = "Le nom n'a pas changé.";
-                return;
-              }
-
-              renameButton.disabled = true;
-              listMessage.textContent = "Modification du nom en cours...";
-
-              try {
-                const result = await appelerFonction(
-                  "admin-update-username",
-                  { userId: user.id, username }
-                );
-                listMessage.textContent = result.message || "Nom modifié.";
-                await chargerUtilisateurs();
-              } catch (error) {
-                listMessage.textContent = "Erreur : " + error.message;
-                renameButton.disabled = false;
-              }
-            });
-
-            const passwordButton = document.createElement("button");
-            passwordButton.type = "button";
-            passwordButton.className = "password-button";
-            passwordButton.textContent = "Changer le mot de passe";
-
-            passwordButton.addEventListener("click", async () => {
-              const password = prompt(
-                `Nouveau mot de passe pour « ${user.username} » (10 caractères minimum) :`
-              );
-              if (password === null) return;
-
-              if (password.length < 10) {
-                listMessage.textContent = "Le mot de passe doit contenir au moins 10 caractères.";
-                return;
-              }
-
-              const confirmation = prompt("Confirme le nouveau mot de passe :");
-              if (confirmation === null) return;
-
-              if (password !== confirmation) {
-                listMessage.textContent = "Les deux mots de passe ne correspondent pas.";
-                return;
-              }
-
-              if (!confirm(`Confirmer la réinitialisation du mot de passe de « ${user.username} » ?`)) {
-                return;
-              }
-
-              passwordButton.disabled = true;
-              listMessage.textContent = "Réinitialisation en cours...";
-
-              try {
-                const result = await appelerFonction(
-                  "admin-reset-password",
-                  { userId: user.id, password }
-                );
-                listMessage.textContent = result.message || "Mot de passe réinitialisé.";
-              } catch (error) {
-                listMessage.textContent = "Erreur : " + error.message;
-              } finally {
-                passwordButton.disabled = false;
-              }
-            });
-
-            const actionButton = document.createElement("button");
-            actionButton.type = "button";
-
-            if (user.active === true) {
-              actionButton.textContent = "Désactiver";
-              actionButton.className = "disable-button";
-            } else {
-              actionButton.textContent = "Réactiver";
-              actionButton.className = "enable-button";
-            }
-
-            actionButton.addEventListener("click", async () => {
-              const newStatus = user.active !== true;
-              const question = newStatus
-                ? `Réactiver le compte « ${user.username} » ?`
-                : `Désactiver le compte « ${user.username} » ?`;
-
-              if (!confirm(question)) return;
-
-              actionButton.disabled = true;
-              listMessage.textContent = "Modification du compte en cours...";
-
-              try {
-                const result = await appelerFonction(
-                  "update-user-status",
-                  { userId: user.id, active: newStatus }
-                );
-                listMessage.textContent = result.message || "Statut modifié.";
-                await chargerUtilisateurs();
-              } catch (error) {
-                listMessage.textContent = "Erreur : " + error.message;
-                actionButton.disabled = false;
-              }
-            });
-
-            actions.append(renameButton, passwordButton, actionButton);
-          }
-
-          row.append(name, role, status, actions);
-          userList.appendChild(row);
-        }
-      } catch (error) {
-        listMessage.textContent = "Erreur : " + (error.message || "chargement impossible.");
-      } finally {
-        refreshButton.disabled = false;
-      }
-    }
-
-    async function chargerHistorique() {
-      if (!sessionValide) return;
-
-      historyRefreshButton.disabled = true;
-      historyMessage.textContent = "Chargement de l'historique...";
-      historyBody.replaceChildren();
+    async function refreshSession() {
+      if (!refreshToken) return false;
 
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/historique_actions?select=id,username,action,details,created_at&order=created_at.desc&limit=100`,
+          `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
           {
-            method: "GET",
-            headers: headersAuth()
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ refresh_token: refreshToken })
           }
         );
 
-        const result = await response.json();
+        if (!response.ok) return false;
 
-        if (!response.ok || !Array.isArray(result)) {
-          console.error("Erreur historique :", result);
-          throw new Error(
-            result && result.message
-              ? result.message
-              : "Impossible de lire l'historique. Vérifie les autorisations Supabase."
-          );
-        }
+        const data = await response.json();
+        accessToken = data.access_token;
+        refreshToken = data.refresh_token;
 
-        if (result.length === 0) {
-          historyMessage.textContent = "Aucune action enregistrée pour le moment.";
-          return;
-        }
-
-        for (const entry of result) {
-          const row = document.createElement("tr");
-
-          const usernameCell = document.createElement("td");
-          usernameCell.textContent = entry.username || "Utilisateur inconnu";
-
-          const actionCell = document.createElement("td");
-          actionCell.textContent = entry.action || "Action inconnue";
-
-          const detailsCell = document.createElement("td");
-          detailsCell.textContent = entry.details || "—";
-
-          const dateCell = document.createElement("td");
-          const date = new Date(entry.created_at);
-          dateCell.textContent = Number.isNaN(date.getTime())
-            ? "Date inconnue"
-            : date.toLocaleString("fr-FR", {
-                dateStyle: "short",
-                timeStyle: "medium"
-              });
-
-          row.append(usernameCell, actionCell, detailsCell, dateCell);
-          historyBody.appendChild(row);
-        }
-
-        historyMessage.textContent =
-          `${result.length} action(s) affichée(s), les plus récentes en premier.`;
+        sessionStorage.setItem("access_token", accessToken);
+        sessionStorage.setItem("refresh_token", refreshToken);
+        return true;
       } catch (error) {
         console.error(error);
-        historyMessage.textContent = "Erreur : " + error.message;
-      } finally {
-        historyRefreshButton.disabled = false;
+        return false;
       }
     }
 
-    historyRefreshButton.addEventListener("click", chargerHistorique);
+    async function apiFetch(url, options = {}) {
+      const request = () => fetch(url, {
+        ...options,
+        headers: { ...authHeaders(), ...(options.headers || {}) }
+      });
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+      let response = await request();
 
-      if (!sessionValide) {
-        afficherMessage("Session non vérifiée. Reconnecte-toi.", true);
-        return;
+      if (response.status === 401 && await refreshSession()) {
+        response = await request();
       }
 
-      const username = document.getElementById("newUsername").value.trim();
-      const password = document.getElementById("newPassword").value;
+      return response;
+    }
 
-      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
-        afficherMessage("Nom d'utilisateur invalide.", true);
-        return;
+    async function readJson(response) {
+      const text = await response.text();
+      let data = null;
+
+      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || data?.error_description ||
+          data?.error || text || `Erreur HTTP ${response.status}`
+        );
       }
 
-      if (password.length < 10) {
-        afficherMessage("Le mot de passe doit contenir au moins 10 caractères.", true);
-        return;
-      }
+      return data;
+    }
 
-      createButton.disabled = true;
-      afficherMessage("Création du compte en cours...");
+    async function verifyAdmin() {
+      if (!accessToken || !refreshToken) {
+        window.location.replace("index.html");
+        return false;
+      }
 
       try {
-        const result = await appelerFonction("create-user", { username, password });
-
-        afficherMessage(
-          `Le compte « ${result.user.username} » a été créé avec succès.`
+        const authResponse = await apiFetch(
+          `${SUPABASE_URL}/auth/v1/user`
         );
 
-        form.reset();
-        await chargerUtilisateurs();
+        if (!authResponse.ok) {
+          sessionStorage.clear();
+          window.location.replace("index.html");
+          return false;
+        }
+
+        const authUser = await authResponse.json();
+        currentUserId = authUser.id;
+
+        const profileResponse = await apiFetch(
+          `${SUPABASE_URL}/rest/v1/profiles` +
+          `?id=eq.${encodeURIComponent(currentUserId)}` +
+          `&select=id,username,role,active`
+        );
+
+        const result = await readJson(profileResponse);
+        const me = result?.[0];
+
+        if (!me || me.active !== true || me.role !== "admin") {
+          status("Accès refusé : cette page est réservée à l'administrateur.", true);
+          return false;
+        }
+
+        $("createPanel").classList.remove("hidden");
+        $("usersPanel").classList.remove("hidden");
+        $("historyPanel").classList.remove("hidden");
+        status(`Connecté en tant qu'administrateur : ${me.username}.`);
+        return true;
       } catch (error) {
-        afficherMessage(error.message || "Une erreur inattendue est survenue.", true);
+        console.error(error);
+        status("Vérification impossible : " + error.message, true);
+        return false;
+      }
+    }
+
+    function roleLabel(role) {
+      if (role === "admin") return "Administrateur";
+      if (role === "user") return "Utilisateur";
+      return role || "Inconnu";
+    }
+
+    function safeCell(value) {
+      const cell = document.createElement("td");
+      cell.textContent = value == null || value === "" ? "—" : String(value);
+      return cell;
+    }
+
+    async function loadProfiles() {
+      const response = await apiFetch(
+        `${SUPABASE_URL}/rest/v1/profiles` +
+        `?select=id,username,role,active&order=username.asc`
+      );
+
+      profiles = await readJson(response) || [];
+      renderProfiles();
+    }
+
+    function renderProfiles() {
+      const tbody = $("usersBody");
+      tbody.replaceChildren();
+
+      const query = $("userSearch").value.trim().toLocaleLowerCase("fr");
+      const filtered = profiles.filter(p =>
+        String(p.username || "").toLocaleLowerCase("fr").includes(query)
+      );
+
+      $("usersCount").textContent = `${filtered.length} utilisateur(s) affiché(s)`;
+
+      if (!filtered.length) {
+        const row = document.createElement("tr");
+        const cell = safeCell("Aucun utilisateur trouvé.");
+        cell.colSpan = 4;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+      }
+
+      for (const p of filtered) {
+        const row = document.createElement("tr");
+        row.appendChild(safeCell(p.username));
+
+        const roleCell = document.createElement("td");
+        const roleSelect = document.createElement("select");
+
+        for (const [value, label] of [
+          ["user", "Utilisateur"],
+          ["admin", "Administrateur"]
+        ]) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          roleSelect.appendChild(option);
+        }
+
+        roleSelect.value = p.role === "admin" ? "admin" : "user";
+        roleSelect.disabled = p.id === currentUserId;
+        roleSelect.title = p.id === currentUserId
+          ? "Tu ne peux pas modifier ton propre rôle ici."
+          : "Changer le rôle";
+
+        roleSelect.addEventListener("change", async () => {
+          const nextRole = roleSelect.value;
+          if (nextRole === p.role) return;
+
+          if (!confirm(`Changer le rôle de ${p.username} en « ${roleLabel(nextRole)} » ?`)) {
+            roleSelect.value = p.role;
+            return;
+          }
+
+          roleSelect.disabled = true;
+
+          try {
+            await updateProfile(p.id, { role: nextRole });
+            status(`Rôle modifié pour ${p.username}.`);
+            await loadProfiles();
+          } catch (error) {
+            console.error(error);
+            status("Modification du rôle impossible : " + error.message, true);
+            roleSelect.value = p.role;
+            roleSelect.disabled = false;
+          }
+        });
+
+        roleCell.appendChild(roleSelect);
+        row.appendChild(roleCell);
+
+        const stateCell = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge" + (p.active ? "" : " off");
+        badge.textContent = p.active ? "Actif" : "Bloqué";
+        stateCell.appendChild(badge);
+        row.appendChild(stateCell);
+
+        const actionsCell = document.createElement("td");
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = p.active ? "red" : "green";
+        toggle.textContent = p.active ? "Bloquer" : "Réactiver";
+        toggle.disabled = p.id === currentUserId;
+        toggle.title = p.id === currentUserId
+          ? "Tu ne peux pas bloquer ton propre compte ici."
+          : "";
+
+        toggle.addEventListener("click", async () => {
+          const newActive = !p.active;
+          const verb = newActive ? "réactiver" : "bloquer";
+
+          if (!confirm(`Veux-tu vraiment ${verb} le compte de ${p.username} ?`)) {
+            return;
+          }
+
+          toggle.disabled = true;
+
+          try {
+            await updateProfile(p.id, { active: newActive });
+            status(`Compte de ${p.username} ${newActive ? "réactivé" : "bloqué"}.`);
+            await loadProfiles();
+          } catch (error) {
+            console.error(error);
+            status("Modification impossible : " + error.message, true);
+            toggle.disabled = false;
+          }
+        });
+
+        actions.appendChild(toggle);
+
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "secondary";
+        reset.textContent = "Réinitialiser le mot de passe";
+
+        reset.addEventListener("click", async () => {
+          const password = prompt(
+            `Nouveau mot de passe provisoire pour ${p.username} (8 caractères minimum) :`
+          );
+
+          if (password === null) return;
+
+          if (password.length < 8) {
+            status("Le mot de passe doit contenir au moins 8 caractères.", true);
+            return;
+          }
+
+          reset.disabled = true;
+
+          try {
+            const response = await apiFetch(
+              `${SUPABASE_URL}/functions/v1/admin-reset-password`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: p.id,
+                  password: password
+                })
+              }
+            );
+
+            await readJson(response);
+            status(`Mot de passe réinitialisé pour ${p.username}.`);
+          } catch (error) {
+            console.error(error);
+            status("Réinitialisation impossible : " + error.message, true);
+          } finally {
+            reset.disabled = false;
+          }
+        });
+
+        actions.appendChild(reset);
+        actionsCell.appendChild(actions);
+        row.appendChild(actionsCell);
+        tbody.appendChild(row);
+      }
+    }
+
+    async function updateProfile(id, changes) {
+      const response = await apiFetch(
+        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify(changes)
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await response.text() || "Erreur de mise à jour.");
+      }
+    }
+
+    $("createForm").addEventListener("submit", async event => {
+      event.preventDefault();
+
+      const username = $("newUsername").value.trim();
+      const password = $("newPassword").value;
+
+      if (!username || password.length < 8) {
+        status("Indique un identifiant et un mot de passe d'au moins 8 caractères.", true);
+        return;
+      }
+
+      const button = $("createButton");
+      button.disabled = true;
+
+      try {
+        const response = await apiFetch(
+          `${SUPABASE_URL}/functions/v1/create-user`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+          }
+        );
+
+        await readJson(response);
+        $("createForm").reset();
+        status(`Compte « ${username} » créé.`);
+        await loadProfiles();
+      } catch (error) {
+        console.error(error);
+        status("Création impossible : " + error.message, true);
       } finally {
-        createButton.disabled = false;
+        button.disabled = false;
       }
     });
 
-    refreshButton.addEventListener("click", chargerUtilisateurs);
+    async function loadHistory() {
+      const response = await apiFetch(
+        `${SUPABASE_URL}/rest/v1/historique_actions` +
+        `?select=*&order=created_at.desc&limit=500`
+      );
+
+      activity = await readJson(response) || [];
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const tbody = $("historyBody");
+      tbody.replaceChildren();
+
+      const query = $("historySearch").value.trim().toLocaleLowerCase("fr");
+
+      const filtered = activity.filter(item => {
+        const profile = profiles.find(p => p.id === item.utilisateur_id);
+        const username = profile?.username || item.utilisateur_id || "";
+        return [
+          username, item.action, item.details, item.created_at
+        ].map(v => String(v ?? "")).join(" ")
+          .toLocaleLowerCase("fr").includes(query);
+      });
+
+      $("historyCount").textContent =
+        `${filtered.length} action(s) affichée(s) sur ${activity.length}`;
+
+      if (!filtered.length) {
+        const row = document.createElement("tr");
+        const cell = safeCell("Aucune action trouvée.");
+        cell.colSpan = 4;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+        return;
+      }
+
+      for (const item of filtered) {
+        const profile = profiles.find(p => p.id === item.utilisateur_id);
+        const date = item.created_at
+          ? new Date(item.created_at).toLocaleString("fr-FR")
+          : "Date inconnue";
+
+        const row = document.createElement("tr");
+        row.appendChild(safeCell(date));
+        row.appendChild(safeCell(profile?.username || item.utilisateur_id));
+        row.appendChild(safeCell(item.action));
+        row.appendChild(safeCell(item.details));
+        tbody.appendChild(row);
+      }
+    }
+
+    $("userSearch").addEventListener("input", renderProfiles);
+    $("historySearch").addEventListener("input", renderHistory);
+
+    $("refreshUsers").addEventListener("click", async () => {
+      try {
+        await loadProfiles();
+        status("Liste des utilisateurs actualisée.");
+      } catch (error) {
+        status("Impossible de charger les utilisateurs : " + error.message, true);
+      }
+    });
+
+    $("refreshHistory").addEventListener("click", async () => {
+      try {
+        await loadHistory();
+        status("Historique actualisé.");
+      } catch (error) {
+        status("Impossible de charger l'historique : " + error.message, true);
+      }
+    });
 
     (async () => {
-      const ok = await verifierSession();
+      if (!(await verifyAdmin())) return;
 
-      if (ok) {
-        await chargerUtilisateurs();
-        await chargerHistorique();
+      try {
+        await loadProfiles();
+        await loadHistory();
+      } catch (error) {
+        console.error(error);
+        status("Chargement incomplet : " + error.message, true);
       }
     })();
   </script>
