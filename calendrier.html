@@ -1,0 +1,492 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendrier - Espace privé</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#20283a;background:#f3f6fb}
+*{box-sizing:border-box}
+body{margin:0}
+header{background:#172554;color:white;padding:22px max(18px,calc((100% - 1100px)/2));}
+header h1{margin:0 0 7px;font-size:25px}
+header p{margin:0;color:#dbeafe}
+main{max-width:1100px;margin:25px auto;padding:0 16px 40px}
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:18px}
+button,.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block}
+.primary{background:#2563eb;color:white}
+.secondary{background:#e5eaf3;color:#1e293b}
+.danger{background:#fee2e2;color:#991b1b}
+.panel{background:white;border:1px solid #e1e7f0;border-radius:15px;padding:19px;margin-bottom:20px;box-shadow:0 3px 14px #17255408}
+.panel h2{font-size:19px;margin:0 0 15px}
+.filters,.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:6px;color:#475569}
+input,select,textarea{font:inherit;width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#172033}
+textarea{min-height:90px;resize:vertical}
+.full{grid-column:1/-1}
+.checkline{display:flex;align-items:center;gap:9px}
+.checkline input{width:auto}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.event{border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px;display:grid;grid-template-columns:110px 1fr;gap:15px}
+.datebox{border-radius:10px;background:#eff6ff;text-align:center;padding:12px 6px;align-self:start;color:#1d4ed8}
+.datebox strong{font-size:26px;display:block}
+.datebox span{font-size:12px;font-weight:700;text-transform:uppercase}
+.event h3{margin:0 0 8px;font-size:17px}
+.event p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0;color:#475569}
+.meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+.tag{font-size:12px;padding:5px 8px;border-radius:20px;background:#eef2ff;color:#3730a3;font-weight:700}
+.tag.devoir{background:#dcfce7;color:#166534}
+.tag.controle{background:#fee2e2;color:#991b1b}
+.tag.date_importante{background:#fef3c7;color:#92400e}
+.eventbuttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.status{padding:12px;border-radius:9px;background:#eff6ff;color:#1e40af;margin:12px 0}
+.status.error{background:#fee2e2;color:#991b1b}
+.muted{color:#64748b;font-size:13px}
+.hidden{display:none!important}
+@media(max-width:600px){.filters,.formgrid{grid-template-columns:1fr}.full{grid-column:auto}.event{grid-template-columns:75px 1fr;gap:10px}.event .datebox{padding:10px 4px}.event h3{font-size:16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>📅 Calendrier de l’espace privé</h1>
+  <p>Devoirs, contrôles, dates importantes et événements</p>
+</header>
+
+<main>
+  <div class="top">
+    <a class="btn secondary" href="accueil.html">← Retour à l’accueil</a>
+    <button id="reload" class="secondary" type="button">↻ Actualiser</button>
+  </div>
+
+  <div id="status" class="status">Vérification de la connexion…</div>
+
+  <section id="filtersPanel" class="panel hidden">
+    <h2>Rechercher dans le calendrier</h2>
+    <div class="filters">
+      <div>
+        <label for="monthFilter">Mois</label>
+        <input type="month" id="monthFilter">
+      </div>
+      <div>
+        <label for="categoryFilter">Catégorie</label>
+        <select id="categoryFilter">
+          <option value="">Toutes les catégories</option>
+          <option value="devoir">Devoir</option>
+          <option value="controle">Contrôle</option>
+          <option value="date_importante">Date importante</option>
+          <option value="evenement">Événement</option>
+        </select>
+      </div>
+      <div class="full">
+        <label for="searchFilter">Recherche par titre, matière ou description</label>
+        <input id="searchFilter" type="search" placeholder="Ex. : mathématiques, chapitre 4…">
+      </div>
+    </div>
+  </section>
+
+  <section id="adminPanel" class="panel hidden">
+    <h2 id="formTitle">➕ Ajouter une entrée</h2>
+    <form id="eventForm">
+      <input type="hidden" id="eventId">
+      <div class="formgrid">
+        <div class="full">
+          <label for="title">Titre *</label>
+          <input id="title" maxlength="160" required placeholder="Ex. : Contrôle sur les fractions">
+        </div>
+        <div>
+          <label for="category">Catégorie *</label>
+          <select id="category" required>
+            <option value="devoir">Devoir</option>
+            <option value="controle">Contrôle</option>
+            <option value="date_importante">Date importante</option>
+            <option value="evenement">Événement</option>
+          </select>
+        </div>
+        <div>
+          <label for="subject">Matière (facultatif)</label>
+          <input id="subject" maxlength="100" placeholder="Ex. : Mathématiques">
+        </div>
+        <div>
+          <label for="startDate">Date de début *</label>
+          <input id="startDate" type="date" required>
+        </div>
+        <div>
+          <label for="startTime">Heure de début (facultatif)</label>
+          <input id="startTime" type="time">
+        </div>
+        <div>
+          <label for="endDate">Date de fin (facultatif)</label>
+          <input id="endDate" type="date">
+        </div>
+        <div>
+          <label for="endTime">Heure de fin (facultatif)</label>
+          <input id="endTime" type="time">
+        </div>
+        <div class="full checkline">
+          <input id="allDay" type="checkbox">
+          <label for="allDay" style="margin:0">Toute la journée</label>
+        </div>
+        <div class="full">
+          <label for="description">Description (facultatif)</label>
+          <textarea id="description" maxlength="5000" placeholder="Consignes, pages à réviser, salle, informations utiles…"></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" type="submit" id="saveButton">Enregistrer</button>
+        <button class="secondary hidden" type="button" id="cancelEdit">Annuler la modification</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>🗓️ Les prochaines dates</h2>
+    <p class="muted">Les entrées sont affichées de la plus proche à la plus éloignée.</p>
+    <div id="events"><p class="muted">Chargement…</p></div>
+  </section>
+</main>
+
+<script>
+const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+let accessToken = sessionStorage.getItem("access_token");
+let refreshToken = sessionStorage.getItem("refresh_token");
+let currentUser = null;
+let isAdmin = false;
+let allEvents = [];
+
+const $ = id => document.getElementById(id);
+const headers = () => ({
+  "apikey": SUPABASE_KEY,
+  "Authorization": "Bearer " + accessToken,
+  "Content-Type": "application/json"
+});
+
+function showStatus(message, error=false) {
+  $("status").textContent = message;
+  $("status").className = error ? "status error" : "status";
+}
+
+async function api(path, options={}) {
+  const response = await fetch(SUPABASE_URL + path, {
+    ...options,
+    headers: {
+      ...headers(),
+      ...(options.headers || {})
+    }
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || ("Erreur HTTP " + response.status));
+  }
+
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function refreshSession() {
+  if (!refreshToken) throw new Error("Session absente. Reconnecte-toi depuis la page de connexion.");
+
+  const response = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  });
+
+  if (!response.ok) {
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("refresh_token");
+    sessionStorage.removeItem("user");
+    throw new Error("Ta session a expiré. Reconnecte-toi.");
+  }
+
+  const data = await response.json();
+  accessToken = data.access_token;
+  refreshToken = data.refresh_token;
+  sessionStorage.setItem("access_token", accessToken);
+  sessionStorage.setItem("refresh_token", refreshToken);
+}
+
+async function verifySession() {
+  if (!accessToken || !refreshToken) {
+    throw new Error("Tu dois d’abord te connecter.");
+  }
+
+  let response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+    headers: headers()
+  });
+
+  if (response.status === 401) {
+    await refreshSession();
+    response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+      headers: headers()
+    });
+  }
+
+  if (!response.ok) throw new Error("Connexion invalide. Reconnecte-toi.");
+  currentUser = await response.json();
+
+  const profiles = await api(
+    "/rest/v1/profiles?id=eq." + encodeURIComponent(currentUser.id) +
+    "&select=id,username,role,active"
+  );
+
+  if (!profiles || !profiles.length || profiles[0].active !== true) {
+    throw new Error("Ton compte est inactif ou introuvable.");
+  }
+
+  isAdmin = profiles[0].role === "admin";
+  $("filtersPanel").classList.remove("hidden");
+  if (isAdmin) $("adminPanel").classList.remove("hidden");
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
+}
+
+const categories = {
+  devoir: "Devoir",
+  controle: "Contrôle",
+  date_importante: "Date importante",
+  evenement: "Événement"
+};
+
+function formatDate(date) {
+  if (!date) return "";
+  const parts = date.split("-");
+  if (parts.length !== 3) return date;
+  return parts[2] + "/" + parts[1] + "/" + parts[0];
+}
+
+function formatTime(time) {
+  return time ? time.slice(0,5) : "";
+}
+
+function formatDateRange(event) {
+  let text = formatDate(event.date_debut);
+  if (event.heure_debut && !event.journee_entiere) {
+    text += " à " + formatTime(event.heure_debut);
+  }
+  if (event.date_fin && event.date_fin !== event.date_debut) {
+    text += " → " + formatDate(event.date_fin);
+    if (event.heure_fin && !event.journee_entiere) {
+      text += " à " + formatTime(event.heure_fin);
+    }
+  } else if (event.heure_fin && !event.journee_entiere) {
+    text += " – " + formatTime(event.heure_fin);
+  }
+  if (event.journee_entiere) text += " · Toute la journée";
+  return text;
+}
+
+function renderEvents() {
+  const month = $("monthFilter").value;
+  const category = $("categoryFilter").value;
+  const search = $("searchFilter").value.trim().toLowerCase();
+
+  const filtered = allEvents.filter(event => {
+    if (month && !event.date_debut.startsWith(month) &&
+        !(event.date_fin && event.date_fin.startsWith(month))) return false;
+    if (category && event.categorie !== category) return false;
+    const text = [event.titre, event.matiere, event.description].join(" ").toLowerCase();
+    if (search && !text.includes(search)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    $("events").innerHTML = '<p class="muted">Aucune entrée ne correspond à ta recherche.</p>';
+    return;
+  }
+
+  $("events").innerHTML = filtered.map(event => {
+    const parts = event.date_debut.split("-");
+    const day = parts[2] || "";
+    const monthLabel = new Date(
+      Number(parts[0]), Number(parts[1])-1, 1
+    ).toLocaleDateString("fr-FR", {month:"short"});
+    return `
+      <article class="event">
+        <div class="datebox">
+          <strong>${escapeHTML(day)}</strong>
+          <span>${escapeHTML(monthLabel)}</span>
+          <div class="muted">${escapeHTML(parts[0] || "")}</div>
+        </div>
+        <div>
+          <div class="meta">
+            <span class="tag ${escapeHTML(event.categorie)}">${escapeHTML(categories[event.categorie] || event.categorie)}</span>
+            ${event.matiere ? `<span class="tag">${escapeHTML(event.matiere)}</span>` : ""}
+          </div>
+          <h3>${escapeHTML(event.titre)}</h3>
+          <div class="muted">${escapeHTML(formatDateRange(event))}</div>
+          ${event.description ? `<p>${escapeHTML(event.description)}</p>` : ""}
+          ${isAdmin ? `
+            <div class="eventbuttons">
+              <button class="secondary" type="button" data-edit="${event.id}">Modifier</button>
+              <button class="danger" type="button" data-delete="${event.id}">Supprimer</button>
+            </div>` : ""}
+        </div>
+      </article>`;
+  }).join("");
+}
+
+async function loadEvents() {
+  showStatus("Chargement du calendrier…");
+  try {
+    allEvents = await api(
+      "/rest/v1/calendrier?select=*&order=date_debut.asc,heure_debut.asc"
+    );
+    renderEvents();
+    showStatus("Calendrier actualisé.");
+  } catch (error) {
+    showStatus("Impossible de charger le calendrier : " + error.message, true);
+  }
+}
+
+function resetForm() {
+  $("eventForm").reset();
+  $("eventId").value = "";
+  $("formTitle").textContent = "➕ Ajouter une entrée";
+  $("saveButton").textContent = "Enregistrer";
+  $("cancelEdit").classList.add("hidden");
+}
+
+function editEvent(id) {
+  const event = allEvents.find(item => String(item.id) === String(id));
+  if (!event || !isAdmin) return;
+
+  $("eventId").value = event.id;
+  $("title").value = event.titre || "";
+  $("category").value = event.categorie || "evenement";
+  $("subject").value = event.matiere || "";
+  $("startDate").value = event.date_debut || "";
+  $("startTime").value = formatTime(event.heure_debut);
+  $("endDate").value = event.date_fin || "";
+  $("endTime").value = formatTime(event.heure_fin);
+  $("allDay").checked = event.journee_entiere === true;
+  $("description").value = event.description || "";
+  $("formTitle").textContent = "✏️ Modifier une entrée";
+  $("saveButton").textContent = "Enregistrer les modifications";
+  $("cancelEdit").classList.remove("hidden");
+  $("adminPanel").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+$("eventForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!isAdmin) return showStatus("Action réservée à l’administrateur.", true);
+
+  const id = $("eventId").value;
+  const startDate = $("startDate").value;
+  const endDate = $("endDate").value || null;
+  const startTime = $("allDay").checked ? null : ($("startTime").value || null);
+  const endTime = $("allDay").checked ? null : ($("endTime").value || null);
+
+  if (endDate && endDate < startDate) {
+    return showStatus("La date de fin ne peut pas être antérieure à la date de début.", true);
+  }
+
+  const payload = {
+    titre: $("title").value.trim(),
+    categorie: $("category").value,
+    matiere: $("subject").value.trim(),
+    date_debut: startDate,
+    heure_debut: startTime,
+    date_fin: endDate,
+    heure_fin: endTime,
+    journee_entiere: $("allDay").checked,
+    description: $("description").value.trim(),
+    modifie_le: new Date().toISOString()
+  };
+
+  if (!payload.titre || !payload.date_debut) {
+    return showStatus("Le titre et la date de début sont obligatoires.", true);
+  }
+
+  if (!id) payload.cree_par = currentUser.id;
+
+  $("saveButton").disabled = true;
+  showStatus("Enregistrement en cours…");
+
+  try {
+    if (id) {
+      await api("/rest/v1/calendrier?id=eq." + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: {"Prefer":"return=representation"},
+        body: JSON.stringify(payload)
+      });
+    } else {
+      await api("/rest/v1/calendrier", {
+        method: "POST",
+        headers: {"Prefer":"return=representation"},
+        body: JSON.stringify(payload)
+      });
+    }
+
+    resetForm();
+    await loadEvents();
+    showStatus(id ? "Entrée modifiée." : "Entrée ajoutée.");
+  } catch (error) {
+    showStatus("Erreur lors de l’enregistrement : " + error.message, true);
+  } finally {
+    $("saveButton").disabled = false;
+  }
+});
+
+$("events").addEventListener("click", async event => {
+  const editButton = event.target.closest("[data-edit]");
+  const deleteButton = event.target.closest("[data-delete]");
+
+  if (editButton) {
+    editEvent(editButton.dataset.edit);
+    return;
+  }
+
+  if (deleteButton) {
+    if (!isAdmin) return;
+    const id = deleteButton.dataset.delete;
+    const item = allEvents.find(entry => String(entry.id) === String(id));
+    if (!item) return;
+
+    if (!confirm('Supprimer « ' + item.titre + ' » du calendrier ?')) return;
+
+    try {
+      showStatus("Suppression en cours…");
+      await api("/rest/v1/calendrier?id=eq." + encodeURIComponent(id), {
+        method: "DELETE"
+      });
+      await loadEvents();
+      showStatus("Entrée supprimée.");
+    } catch (error) {
+      showStatus("Erreur lors de la suppression : " + error.message, true);
+    }
+  }
+});
+
+$("cancelEdit").addEventListener("click", resetForm);
+$("reload").addEventListener("click", loadEvents);
+$("monthFilter").addEventListener("input", renderEvents);
+$("categoryFilter").addEventListener("change", renderEvents);
+$("searchFilter").addEventListener("input", renderEvents);
+
+(async function init() {
+  try {
+    await verifySession();
+    await loadEvents();
+  } catch (error) {
+    showStatus(error.message + " Retourne à la page de connexion.", true);
+  }
+})();
+</script>
+</body>
+</html>
