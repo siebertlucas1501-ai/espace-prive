@@ -1,1 +1,233 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partage d'écran - Espace privé</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    main {
+      max-width: 760px;
+      margin: 25px auto;
+      padding: 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 28px #0001;
+    }
+    h1 { margin-top: 0; }
+    button, a {
+      display: inline-block;
+      margin: 5px 5px 5px 0;
+      padding: 11px 15px;
+      border: 0;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button { background: #2563eb; color: white; }
+    button.danger { background: #dc2626; }
+    a { background: #e2e8f0; color: #0f172a; text-decoration: none; }
+    .request {
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+    }
+    #message { margin-top: 16px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🖥️ Partage d'écran</h1>
+  <p>Tu recevras ici les demandes de partage. Rien ne sera partagé sans ton accord.</p>
+  <p><strong>État :</strong> <span id="status">Vérification de la connexion…</span></p>
+  <div id="requests"></div>
+  <div id="message" role="status" aria-live="polite"></div>
+  <button id="refresh">Actualiser les demandes</button>
+  <button id="stop" class="danger" hidden>Arrêter mon partage</button>
+  <p><a href="accueil.html">← Retour à l'accueil</a></p>
+</main>
+
+<script>
+(() => {
+  const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+  const token = sessionStorage.getItem("access_token");
+  const userText = sessionStorage.getItem("user");
+  const statusEl = document.getElementById("status");
+  const requestsEl = document.getElementById("requests");
+  const messageEl = document.getElementById("message");
+  const stopButton = document.getElementById("stop");
+
+  let currentUser;
+  let activeStream = null;
+  let refreshTimer = null;
+
+  function say(text, error = false) {
+    messageEl.textContent = text;
+    messageEl.style.color = error ? "#b91c1c" : "#166534";
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(SUPABASE_URL + path, {
+      ...options,
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Erreur Supabase (" + response.status + ")");
+    }
+    return data;
+  }
+
+  async function checkSession() {
+    if (!token || !userText) {
+      location.href = "index.html";
+      return false;
+    }
+
+    const response = await fetch(SUPABASE_URL + "/auth/v1/user", {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + token
+      }
+    });
+
+    if (!response.ok) {
+      statusEl.textContent = "Session expirée. Reconnecte-toi.";
+      return false;
+    }
+
+    currentUser = await response.json();
+    statusEl.textContent = "Connecté";
+    return true;
+  }
+
+  async function loadRequests() {
+    try {
+      const rows = await api(
+        "/rest/v1/screen_share_sessions?select=id,requester_id,target_user_id,status,created_at&target_user_id=eq." +
+        encodeURIComponent(currentUser.id) +
+        "&status=eq.requested&order=created_at.desc"
+      );
+
+      requestsEl.replaceChildren();
+
+      if (!rows.length) {
+        requestsEl.textContent = "Aucune demande en attente.";
+        return;
+      }
+
+      for (const row of rows) {
+        const card = document.createElement("section");
+        card.className = "request";
+
+        const title = document.createElement("p");
+        title.textContent = "Demande de partage d'écran reçue.";
+        card.appendChild(title);
+
+        const details = document.createElement("p");
+        details.textContent = "Identifiant de demande : " + row.id;
+        card.appendChild(details);
+
+        const accept = document.createElement("button");
+        accept.textContent = "Accepter";
+        accept.addEventListener("click", () => acceptRequest(row.id));
+
+        const reject = document.createElement("button");
+        reject.textContent = "Refuser";
+        reject.className = "danger";
+        reject.addEventListener("click", () => rejectRequest(row.id));
+
+        card.append(accept, reject);
+        requestsEl.appendChild(card);
+      }
+    } catch (error) {
+      say("Impossible de charger les demandes : " + error.message, true);
+    }
+  }
+
+  async function updateStatus(id, status) {
+    const rows = await api(
+      "/rest/v1/screen_share_sessions?id=eq." + encodeURIComponent(id) +
+      "&target_user_id=eq." + encodeURIComponent(currentUser.id) +
+      "&status=eq.requested",
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ status })
+      }
+    );
+
+    if (!rows.length) {
+      throw new Error("La demande a déjà été traitée ou n'est plus disponible.");
+    }
+  }
+
+  async function acceptRequest(id) {
+    try {
+      await updateStatus(id, "accepted");
+      say("Demande acceptée. Pour l'instant, la connexion vidéo n'est pas encore activée.");
+      await loadRequests();
+    } catch (error) {
+      say(error.message, true);
+    }
+  }
+
+  async function rejectRequest(id) {
+    try {
+      await updateStatus(id, "rejected");
+      say("Demande refusée.");
+      await loadRequests();
+    } catch (error) {
+      say(error.message, true);
+    }
+  }
+
+  stopButton.addEventListener("click", () => {
+    if (activeStream) {
+      activeStream.getTracks().forEach(track => track.stop());
+      activeStream = null;
+    }
+    stopButton.hidden = true;
+    say("Partage arrêté.");
+  });
+
+  document.getElementById("refresh").addEventListener("click", loadRequests);
+
+  async function start() {
+    try {
+      const ok = await checkSession();
+      if (!ok || !currentUser) return;
+      await loadRequests();
+      refreshTimer = setInterval(loadRequests, 5000);
+    } catch (error) {
+      say(error.message, true);
+    }
+  }
+
+  window.addEventListener("beforeunload", () => {
+    if (refreshTimer) clearInterval(refreshTimer);
+    if (activeStream) activeStream.getTracks().forEach(track => track.stop());
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>
+
