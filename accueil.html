@@ -185,7 +185,6 @@
       font-weight: 600;
     }
 
-    /* Recherche, catégories et tri */
     .document-tools {
       display: grid;
       grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) minmax(170px, 1fr);
@@ -255,22 +254,27 @@
       header { align-items: stretch; }
       header h1 { font-size: 21px; }
       #logout { width: 100%; }
+
       main {
         width: min(100% - 22px, 1040px);
         margin-top: 18px;
       }
+
       .panel {
         border-radius: 15px;
         padding: 18px;
         margin-bottom: 14px;
       }
+
       .document-tools { grid-template-columns: 1fr; }
       .quick-links { grid-template-columns: 1fr; }
       .quick-button { width: 100%; }
+
       .upload-row {
         align-items: stretch;
         flex-direction: column;
       }
+
       #uploadButton, #refreshButton { width: 100%; }
       #fileInput { width: 100%; flex-basis: auto; }
       .file-row { align-items: stretch; }
@@ -309,6 +313,15 @@
         <a href="messagerie.html" class="quick-button">
           💬 Ouvrir la messagerie
         </a>
+
+        <a href="calendrier.html" class="quick-button">
+          📅 Calendrier
+        </a>
+
+        <a href="annonces.html" class="quick-button">
+          📢 Annonces
+        </a>
+
         <a href="admin.html" id="adminButton"
            class="quick-button admin-button" hidden>
           🛡️ Administration
@@ -368,7 +381,7 @@
     const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
     let accessToken = sessionStorage.getItem("access_token");
-    const refreshToken = sessionStorage.getItem("refresh_token");
+    let refreshToken = sessionStorage.getItem("refresh_token");
     const userText = sessionStorage.getItem("user");
 
     let currentUserId = null;
@@ -418,9 +431,10 @@
 
         const data = await response.json();
         accessToken = data.access_token;
+        refreshToken = data.refresh_token;
 
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem("refresh_token", data.refresh_token);
+        sessionStorage.setItem("access_token", accessToken);
+        sessionStorage.setItem("refresh_token", refreshToken);
         return true;
       } catch (error) {
         console.error(error);
@@ -430,7 +444,7 @@
 
     async function enregistrerAction(action, details) {
       try {
-        let response = await fetch(
+        const envoyer = () => fetch(
           `${SUPABASE_URL}/rest/v1/historique_actions`,
           {
             method: "POST",
@@ -447,23 +461,10 @@
           }
         );
 
+        let response = await envoyer();
+
         if (response.status === 401 && await renouvelerSession()) {
-          response = await fetch(
-            `${SUPABASE_URL}/rest/v1/historique_actions`,
-            {
-              method: "POST",
-              headers: {
-                ...headersAuth(),
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                utilisateur_id: currentUserId,
-                action: action,
-                details: details
-              })
-            }
-          );
+          response = await envoyer();
         }
 
         if (!response.ok) {
@@ -490,9 +491,15 @@
       }
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        let response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
           headers: headersAuth()
         });
+
+        if (response.status === 401 && await renouvelerSession()) {
+          response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: headersAuth()
+          });
+        }
 
         if (!response.ok) {
           sessionStorage.clear();
