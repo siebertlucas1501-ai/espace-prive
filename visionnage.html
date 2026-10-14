@@ -5,88 +5,130 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Visionnage - Espace privé</title>
+
   <style>
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       font-family: Arial, sans-serif;
       background: #0f172a;
       color: #f8fafc;
     }
+
     main {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 20px auto;
       padding: 24px;
       background: #1e293b;
       border-radius: 16px;
     }
+
     button, a {
       display: inline-block;
-      padding: 11px 15px;
+      padding: 12px 16px;
       margin: 5px 5px 5px 0;
       border: 0;
       border-radius: 8px;
-      cursor: pointer;
       font-size: 15px;
+      cursor: pointer;
       text-decoration: none;
     }
+
     button { background: #2563eb; color: white; }
     button.danger { background: #dc2626; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
     a { background: #334155; color: white; }
+
     video {
+      display: block;
       width: 100%;
-      max-height: 70vh;
+      min-height: 240px;
+      max-height: 75vh;
+      margin-top: 18px;
       background: #020617;
       border-radius: 10px;
-      margin-top: 16px;
     }
-    #message { white-space: pre-wrap; }
+
+    #message {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .notice {
+      padding: 12px;
+      background: #334155;
+      border-radius: 8px;
+    }
   </style>
 </head>
+
 <body>
 <main>
   <h1>🖥️ Visionnage d'écran</h1>
-  <p id="status">Vérification de la connexion…</p>
+
+  <p><strong>Connexion :</strong> <span id="status">Vérification…</span></p>
   <p id="message" role="status" aria-live="polite"></p>
 
-  <p>
-    Cette page affichera un écran uniquement après une connexion
-    autorisée et l'accord explicite de la personne qui le partage.
+  <p class="notice">
+    Aucun écran ne peut être affiché sans une connexion autorisée.
+    La personne qui partage doit sélectionner son écran dans la fenêtre
+    du navigateur et peut arrêter le partage à tout moment.
   </p>
 
   <video id="screen" autoplay playsinline controls></video>
 
-  <p>
+  <div>
+    <button id="connect" disabled>Se connecter à une session</button>
     <button id="stop" class="danger" disabled>Arrêter la connexion</button>
+  </div>
+
+  <p>
     <a href="partage-ecran.html">Retour au partage d'écran</a>
     <a href="accueil.html">Accueil</a>
   </p>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 (() => {
+  "use strict";
+
   const SUPABASE_URL =
     "https://fzbbyokmekokezllvjxh.supabase.co";
+
   const SUPABASE_KEY =
     "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
   const statusEl = document.getElementById("status");
   const messageEl = document.getElementById("message");
   const videoEl = document.getElementById("screen");
+  const connectButton = document.getElementById("connect");
   const stopButton = document.getElementById("stop");
 
-  const token = sessionStorage.getItem("access_token");
-
+  let supabase = null;
+  let currentUser = null;
   let pc = null;
   let channel = null;
   let remoteStream = null;
+  let sessionId = null;
+  let pendingCandidates = [];
+  let closed = false;
 
-  function say(message, error = false) {
-    messageEl.textContent = message;
+  function say(text, error = false) {
+    messageEl.textContent = text;
     messageEl.style.color = error ? "#fca5a5" : "#86efac";
   }
 
+  function getToken() {
+    return sessionStorage.getItem("access_token");
+  }
+
   async function verifyLogin() {
+    const token = getToken();
+
     if (!token) {
       location.href = "index.html";
       return false;
@@ -107,17 +149,91 @@
       return false;
     }
 
-    statusEl.textContent = "Connecté. En attente d'une session autorisée.";
+    currentUser = await response.json();
+
+    supabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY,
+      {
+        accessToken: async () => getToken()
+      }
+    );
+
+    statusEl.textContent = "Connecté";
+    connectButton.disabled = false;
     return true;
   }
 
-  function stopConnection() {
-    if (channel) {
-      channel.unsubscribe();
+  async function getAcceptedSession(id) {
+    const { data, error } = await supabase
+      .from("screen_share_sessions")
+      .select("id, requester_id, target_user_id, status")
+      .eq("id", id)
+      .eq("status", "accepted")
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      throw new Error("Session introuvable ou non acceptée.");
+    }
+
+    const isParticipant =
+      data.requester_id === currentUser.id ||
+      data.target_user_id === currentUser.id;
+
+    if (!isParticipant) {
+      throw new Error("Tu ne participes pas à cette session.");
+    }
+
+    return data;
+  }
+
+  async function sendSignal(event, payload) {
+    if (!channel) throw new Error("Canal de signalisation indisponible.");
+
+    const { error } = await channel.send({
+      type: "broadcast",
+      event,
+      payload
+    });
+
+    if (error) throw error;
+  }
+
+  async function addCandidate(candidate) {
+    if (!pc || !pc.remoteDescription) {
+      pendingCandidates.push(candidate);
+      return;
+    }
+
+    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  }
+
+  async function flushCandidates() {
+    const queued = pendingCandidates;
+    pendingCandidates = [];
+
+    for (const candidate of queued) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }
+
+  async function stopConnection(updateDatabase = false) {
+    closed = true;
+
+    connectButton.disabled = true;
+    stopButton.disabled = true;
+
+    if (channel && supabase) {
+      try {
+        await supabase.removeChannel(channel);
+      } catch (_) {}
       channel = null;
     }
 
     if (pc) {
+      pc.ontrack = null;
+      pc.onicecandidate = null;
       pc.close();
       pc = null;
     }
@@ -128,22 +244,178 @@
     }
 
     videoEl.srcObject = null;
-    stopButton.disabled = true;
+
+    if (updateDatabase && sessionId && supabase) {
+      /*
+       * La politique SQL actuelle doit autoriser ce participant
+       * à passer la session à "stopped". Ne pas ignorer une erreur :
+       * la fermeture locale ne garantit pas l'arrêt chez l'autre.
+       */
+      const { error } = await supabase
+        .from("screen_share_sessions")
+        .update({ status: "stopped" })
+        .eq("id", sessionId)
+        .eq("status", "accepted");
+
+      if (error) {
+        say(
+          "Connexion locale arrêtée, mais la mise à jour de la session a échoué : " +
+          error.message,
+          true
+        );
+      }
+    }
+
     statusEl.textContent = "Connexion arrêtée.";
   }
 
-  stopButton.addEventListener("click", stopConnection);
+  async function connectToSession() {
+    const enteredId = prompt(
+      "Colle l'identifiant exact de la session acceptée dans Supabase :"
+    );
 
-  window.addEventListener("beforeunload", stopConnection);
+    if (!enteredId) return;
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(enteredId.trim())) {
+      say("Identifiant de session invalide.", true);
+      return;
+    }
+
+    try {
+      closed = false;
+      sessionId = enteredId.trim();
+
+      const session = await getAcceptedSession(sessionId);
+
+      channel = supabase.channel("screen-share:" + session.id, {
+        config: {
+          private: true,
+          broadcast: { self: false }
+        }
+      });
+
+      channel
+        .on("broadcast", { event: "offer" }, async ({ payload }) => {
+          if (closed || !payload || !payload.description) return;
+
+          try {
+            if (pc) return;
+
+            pc = new RTCPeerConnection({
+              iceServers: [
+                { urls: "stun:stun.l.google.com:19302" }
+              ]
+            });
+
+            pc.ontrack = event => {
+              if (!remoteStream) {
+                remoteStream = new MediaStream();
+                videoEl.srcObject = remoteStream;
+              }
+
+              remoteStream.addTrack(event.track);
+              videoEl.play().catch(() => {});
+            };
+
+            pc.onicecandidate = event => {
+              if (event.candidate) {
+                sendSignal("ice", {
+                  candidate: event.candidate.toJSON()
+                }).catch(error => say(error.message, true));
+              }
+            };
+
+            await pc.setRemoteDescription(
+              new RTCSessionDescription(payload.description)
+            );
+
+            await flushCandidates();
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            await sendSignal("answer", {
+              description: pc.localDescription
+            });
+
+            stopButton.disabled = false;
+            statusEl.textContent = "Connexion WebRTC en cours…";
+          } catch (error) {
+            say("Erreur lors de la réponse WebRTC : " + error.message, true);
+          }
+        })
+        .on("broadcast", { event: "answer" }, async ({ payload }) => {
+          /*
+           * Une réponse n'est utile que sur l'ordinateur qui a
+           * créé l'offre. La création de l'offre n'est pas encore
+           * implémentée dans cette page.
+           */
+          if (payload) {
+            say("Réponse reçue. Le rôle émetteur doit être configuré.", true);
+          }
+        })
+        .on("broadcast", { event: "ice" }, async ({ payload }) => {
+          if (!payload || !payload.candidate || closed) return;
+
+          try {
+            await addCandidate(payload.candidate);
+          } catch (error) {
+            say("Erreur ICE : " + error.message, true);
+          }
+        })
+        .on("broadcast", { event: "stop" }, () => {
+          stopConnection(false);
+          say("L'autre participant a arrêté le partage.");
+        });
+
+      const status = await new Promise((resolve, reject) => {
+        channel.subscribe(state => {
+          if (state === "SUBSCRIBED") resolve(state);
+          if (state === "CHANNEL_ERROR" || state === "TIMED_OUT") {
+            reject(new Error("Impossible de rejoindre le canal privé Supabase."));
+          }
+        });
+      });
+
+      if (status === "SUBSCRIBED") {
+        statusEl.textContent = "Canal privé connecté";
+        say(
+          "Le canal est prêt. La transmission complète nécessite encore le code de l'ordinateur émetteur."
+        );
+        stopButton.disabled = false;
+      }
+    } catch (error) {
+      say("Connexion impossible : " + error.message, true);
+      statusEl.textContent = "Erreur";
+    }
+  }
+
+  connectButton.addEventListener("click", connectToSession);
+
+  stopButton.addEventListener("click", async () => {
+    if (channel) {
+      try {
+        await sendSignal("stop", {});
+      } catch (_) {}
+    }
+
+    await stopConnection(true);
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (pc) pc.close();
+  });
 
   async function start() {
-    try {
-      const loggedIn = await verifyLogin();
-      if (!loggedIn) return;
+    if (!window.supabase) {
+      statusEl.textContent = "Bibliothèque Supabase indisponible.";
+      return;
+    }
 
-      say(
-        "La connexion est vérifiée. La transmission WebRTC n'est pas encore reliée à une demande acceptée."
-      );
+    try {
+      const ok = await verifyLogin();
+      if (!ok) return;
+      say("Connecté. Aucune session ne sera rejointe sans son identifiant.");
     } catch (error) {
       statusEl.textContent = "Erreur de connexion.";
       say(error.message, true);
@@ -155,4 +427,3 @@
 </script>
 </body>
 </html>
-
