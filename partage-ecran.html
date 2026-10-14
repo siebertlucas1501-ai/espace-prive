@@ -4,230 +4,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Partage d'écran - Espace privé</title>
+  <title>Partager mon écran</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body {
-      margin: 0;
-      padding: 24px;
-      font-family: Arial, sans-serif;
-      background: #f1f5f9;
-      color: #0f172a;
-    }
-    main {
-      max-width: 760px;
-      margin: 25px auto;
-      padding: 24px;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 8px 28px #0001;
-    }
-    h1 { margin-top: 0; }
-    button, a {
-      display: inline-block;
-      margin: 5px 5px 5px 0;
-      padding: 11px 15px;
-      border: 0;
-      border-radius: 8px;
-      font-size: 15px;
-      cursor: pointer;
-    }
-    button { background: #2563eb; color: white; }
-    button.danger { background: #dc2626; }
-    a { background: #e2e8f0; color: #0f172a; text-decoration: none; }
-    .request {
-      margin-top: 16px;
-      padding: 16px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-    }
-    #message { margin-top: 16px; white-space: pre-wrap; }
+    body { font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 16px; }
+    input, button { padding: 10px; margin: 5px 0; }
+    button { cursor: pointer; }
+    video { width: 100%; background: #111; margin-top: 15px; }
+    #status { padding: 12px; background: #eee; margin: 12px 0; }
   </style>
 </head>
 <body>
-<main>
-  <h1>🖥️ Partage d'écran</h1>
-  <p>Tu recevras ici les demandes de partage. Rien ne sera partagé sans ton accord.</p>
-  <p><strong>État :</strong> <span id="status">Vérification de la connexion…</span></p>
-  <div id="requests"></div>
-  <div id="message" role="status" aria-live="polite"></div>
-  <button id="refresh">Actualiser les demandes</button>
-  <button id="stop" class="danger" hidden>Arrêter mon partage</button>
-  <p><a href="accueil.html">← Retour à l'accueil</a></p>
-</main>
+  <h1>Partager mon écran</h1>
+  <p>Entre l'identifiant d'une session acceptée, puis autorise le partage dans la fenêtre du navigateur.</p>
+  <label for="sessionId">Identifiant de session</label><br>
+  <input id="sessionId" style="width:min(95%,420px)" placeholder="UUID de la session">
+  <br>
+  <button id="start">Choisir l'écran et partager</button>
+  <button id="stop" disabled>Arrêter le partage</button>
+  <div id="status">Vérification de la connexion…</div>
+  <video id="preview" autoplay muted playsinline></video>
 
 <script>
-(() => {
-  const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
 
+const statusEl = document.getElementById("status");
+const preview = document.getElementById("preview");
+const startButton = document.getElementById("start");
+const stopButton = document.getElementById("stop");
+
+let client;
+let channel;
+let pc;
+let stream;
+let sessionId;
+let userId;
+let stopped = false;
+let pendingCandidates = [];
+
+function status(message) {
+  statusEl.textContent = message;
+}
+
+async function init() {
   const token = sessionStorage.getItem("access_token");
-  const userText = sessionStorage.getItem("user");
-  const statusEl = document.getElementById("status");
-  const requestsEl = document.getElementById("requests");
-  const messageEl = document.getElementById("message");
-  const stopButton = document.getElementById("stop");
-
-  let currentUser;
-  let activeStream = null;
-  let refreshTimer = null;
-
-  function say(text, error = false) {
-    messageEl.textContent = text;
-    messageEl.style.color = error ? "#b91c1c" : "#166534";
+  if (!token) {
+    status("Connecte-toi d'abord à l'espace privé.");
+    startButton.disabled = true;
+    return;
   }
 
-  async function api(path, options = {}) {
-    const response = await fetch(SUPABASE_URL + path, {
-      ...options,
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json",
-        ...(options.headers || {})
+  client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    accessToken: async () => sessionStorage.getItem("access_token")
+  });
+
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) {
+    status("Connexion expirée. Reconnecte-toi.");
+    startButton.disabled = true;
+    return;
+  }
+
+  userId = data.user.id;
+  status("Connecté. Prêt à partager après autorisation.");
+}
+
+async function sendSignal(event, payload) {
+  if (!channel) throw new Error("Canal Realtime absent.");
+  const result = await channel.send({
+    type: "broadcast",
+    event,
+    payload
+  });
+  if (result !== "ok") throw new Error("Envoi du signal impossible.");
+}
+
+async function start() {
+  try {
+    stopped = false;
+    pendingCandidates = [];
+    sessionId = document.getElementById("sessionId").value.trim();
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+      status("Entre un identifiant de session valide.");
+      return;
+    }
+
+    const { data: session, error } = await client
+      .from("screen_share_sessions")
+      .select("id, requester_id, target_user_id, status")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (error || !session) {
+      status("Session introuvable ou accès refusé.");
+      return;
+    }
+
+    if (session.status !== "accepted" ||
+        ![session.requester_id, session.target_user_id].includes(userId)) {
+      status("Session non acceptée ou utilisateur non autorisé.");
+      return;
+    }
+
+    // Le navigateur demandera explicitement quelle fenêtre ou quel écran partager.
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false
+    });
+    preview.srcObject = stream;
+
+    pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    stream.getTracks().forEach(track => {
+      pc.addTrack(track, stream);
+      track.onended = () => stop(true);
+    });
+
+    channel = client.channel("screen-share:" + sessionId, {
+      config: { private: true, broadcast: { self: false } }
+    });
+
+    channel.on("broadcast", { event: "answer" }, async ({ payload }) => {
+      if (stopped || !payload?.description || !pc) return;
+      try {
+        await pc.setRemoteDescription(payload.description);
+        for (const candidate of pendingCandidates) {
+          await pc.addIceCandidate(candidate);
+        }
+        pendingCandidates = [];
+        status("Réponse reçue. Connexion à l'ordinateur distant…");
+      } catch (e) {
+        status("Erreur de réponse WebRTC : " + e.message);
       }
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "Erreur Supabase (" + response.status + ")");
-    }
-    return data;
-  }
-
-  async function checkSession() {
-    if (!token || !userText) {
-      location.href = "index.html";
-      return false;
-    }
-
-    const response = await fetch(SUPABASE_URL + "/auth/v1/user", {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: "Bearer " + token
+    channel.on("broadcast", { event: "ice" }, async ({ payload }) => {
+      if (stopped || !payload?.candidate || !pc) return;
+      try {
+        if (pc.remoteDescription) {
+          await pc.addIceCandidate(payload.candidate);
+        } else {
+          pendingCandidates.push(payload.candidate);
+        }
+      } catch (e) {
+        console.error("Candidat ICE non ajouté", e);
       }
     });
 
-    if (!response.ok) {
-      statusEl.textContent = "Session expirée. Reconnecte-toi.";
-      return false;
-    }
+    channel.on("broadcast", { event: "stop" }, async () => {
+      status("Le visionnage a été arrêté par l'autre participant.");
+      await stop(false);
+    });
 
-    currentUser = await response.json();
-    statusEl.textContent = "Connecté";
-    return true;
-  }
+    const subscription = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Délai Realtime dépassé.")), 10000);
+      channel.subscribe(result => {
+        if (result === "SUBSCRIBED") {
+          clearTimeout(timeout);
+          resolve(result);
+        } else if (result === "CHANNEL_ERROR" || result === "TIMED_OUT") {
+          clearTimeout(timeout);
+          reject(new Error("Abonnement Realtime refusé : " + result));
+        }
+      });
+    });
 
-  async function loadRequests() {
-    try {
-      const rows = await api(
-        "/rest/v1/screen_share_sessions?select=id,requester_id,target_user_id,status,created_at&target_user_id=eq." +
-        encodeURIComponent(currentUser.id) +
-        "&status=eq.requested&order=created_at.desc"
-      );
-
-      requestsEl.replaceChildren();
-
-      if (!rows.length) {
-        requestsEl.textContent = "Aucune demande en attente.";
-        return;
+    pc.onicecandidate = async event => {
+      if (!event.candidate || stopped) return;
+      try {
+        await sendSignal("ice", { candidate: event.candidate });
+      } catch (e) {
+        console.error(e);
       }
+    };
 
-      for (const row of rows) {
-        const card = document.createElement("section");
-        card.className = "request";
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal("offer", { description: pc.localDescription });
 
-        const title = document.createElement("p");
-        title.textContent = "Demande de partage d'écran reçue.";
-        card.appendChild(title);
-
-        const details = document.createElement("p");
-        details.textContent = "Identifiant de demande : " + row.id;
-        card.appendChild(details);
-
-        const accept = document.createElement("button");
-        accept.textContent = "Accepter";
-        accept.addEventListener("click", () => acceptRequest(row.id));
-
-        const reject = document.createElement("button");
-        reject.textContent = "Refuser";
-        reject.className = "danger";
-        reject.addEventListener("click", () => rejectRequest(row.id));
-
-        card.append(accept, reject);
-        requestsEl.appendChild(card);
-      }
-    } catch (error) {
-      say("Impossible de charger les demandes : " + error.message, true);
+    startButton.disabled = true;
+    stopButton.disabled = false;
+    status("Offre envoyée. En attente de la réponse du visionneur…");
+  } catch (e) {
+    status("Erreur : " + e.message);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
     }
+    preview.srcObject = null;
+  }
+}
+
+async function stop(notify = true) {
+  stopped = true;
+
+  if (notify && channel) {
+    try { await sendSignal("stop", {}); } catch (_) {}
   }
 
-  async function updateStatus(id, status) {
-    const rows = await api(
-      "/rest/v1/screen_share_sessions?id=eq." + encodeURIComponent(id) +
-      "&target_user_id=eq." + encodeURIComponent(currentUser.id) +
-      "&status=eq.requested",
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ status })
-      }
-    );
-
-    if (!rows.length) {
-      throw new Error("La demande a déjà été traitée ou n'est plus disponible.");
-    }
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
   }
 
-  async function acceptRequest(id) {
-    try {
-      await updateStatus(id, "accepted");
-      say("Demande acceptée. Pour l'instant, la connexion vidéo n'est pas encore activée.");
-      await loadRequests();
-    } catch (error) {
-      say(error.message, true);
-    }
+  if (pc) {
+    pc.close();
+    pc = null;
   }
 
-  async function rejectRequest(id) {
-    try {
-      await updateStatus(id, "rejected");
-      say("Demande refusée.");
-      await loadRequests();
-    } catch (error) {
-      say(error.message, true);
-    }
+  if (channel && client) {
+    await client.removeChannel(channel);
+    channel = null;
   }
 
-  stopButton.addEventListener("click", () => {
-    if (activeStream) {
-      activeStream.getTracks().forEach(track => track.stop());
-      activeStream = null;
-    }
-    stopButton.hidden = true;
-    say("Partage arrêté.");
-  });
+  preview.srcObject = null;
+  startButton.disabled = false;
+  stopButton.disabled = true;
+  status("Partage arrêté.");
+}
 
-  document.getElementById("refresh").addEventListener("click", loadRequests);
-
-  async function start() {
-    try {
-      const ok = await checkSession();
-      if (!ok || !currentUser) return;
-      await loadRequests();
-      refreshTimer = setInterval(loadRequests, 5000);
-    } catch (error) {
-      say(error.message, true);
-    }
-  }
-
-  window.addEventListener("beforeunload", () => {
-    if (refreshTimer) clearInterval(refreshTimer);
-    if (activeStream) activeStream.getTracks().forEach(track => track.stop());
-  });
-
-  start();
-})();
+startButton.addEventListener("click", start);
+stopButton.addEventListener("click", () => stop(true));
+init();
 </script>
 </body>
 </html>
-
