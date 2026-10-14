@@ -1,1 +1,158 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visionnage - Espace privé</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    main {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 24px;
+      background: #1e293b;
+      border-radius: 16px;
+    }
+    button, a {
+      display: inline-block;
+      padding: 11px 15px;
+      margin: 5px 5px 5px 0;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      text-decoration: none;
+    }
+    button { background: #2563eb; color: white; }
+    button.danger { background: #dc2626; }
+    a { background: #334155; color: white; }
+    video {
+      width: 100%;
+      max-height: 70vh;
+      background: #020617;
+      border-radius: 10px;
+      margin-top: 16px;
+    }
+    #message { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🖥️ Visionnage d'écran</h1>
+  <p id="status">Vérification de la connexion…</p>
+  <p id="message" role="status" aria-live="polite"></p>
+
+  <p>
+    Cette page affichera un écran uniquement après une connexion
+    autorisée et l'accord explicite de la personne qui le partage.
+  </p>
+
+  <video id="screen" autoplay playsinline controls></video>
+
+  <p>
+    <button id="stop" class="danger" disabled>Arrêter la connexion</button>
+    <a href="partage-ecran.html">Retour au partage d'écran</a>
+    <a href="accueil.html">Accueil</a>
+  </p>
+</main>
+
+<script>
+(() => {
+  const SUPABASE_URL =
+    "https://fzbbyokmekokezllvjxh.supabase.co";
+  const SUPABASE_KEY =
+    "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+  const statusEl = document.getElementById("status");
+  const messageEl = document.getElementById("message");
+  const videoEl = document.getElementById("screen");
+  const stopButton = document.getElementById("stop");
+
+  const token = sessionStorage.getItem("access_token");
+
+  let pc = null;
+  let channel = null;
+  let remoteStream = null;
+
+  function say(message, error = false) {
+    messageEl.textContent = message;
+    messageEl.style.color = error ? "#fca5a5" : "#86efac";
+  }
+
+  async function verifyLogin() {
+    if (!token) {
+      location.href = "index.html";
+      return false;
+    }
+
+    const response = await fetch(
+      SUPABASE_URL + "/auth/v1/user",
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: "Bearer " + token
+        }
+      }
+    );
+
+    if (!response.ok) {
+      statusEl.textContent = "Session expirée. Reconnecte-toi.";
+      return false;
+    }
+
+    statusEl.textContent = "Connecté. En attente d'une session autorisée.";
+    return true;
+  }
+
+  function stopConnection() {
+    if (channel) {
+      channel.unsubscribe();
+      channel = null;
+    }
+
+    if (pc) {
+      pc.close();
+      pc = null;
+    }
+
+    if (remoteStream) {
+      remoteStream.getTracks().forEach(track => track.stop());
+      remoteStream = null;
+    }
+
+    videoEl.srcObject = null;
+    stopButton.disabled = true;
+    statusEl.textContent = "Connexion arrêtée.";
+  }
+
+  stopButton.addEventListener("click", stopConnection);
+
+  window.addEventListener("beforeunload", stopConnection);
+
+  async function start() {
+    try {
+      const loggedIn = await verifyLogin();
+      if (!loggedIn) return;
+
+      say(
+        "La connexion est vérifiée. La transmission WebRTC n'est pas encore reliée à une demande acceptée."
+      );
+    } catch (error) {
+      statusEl.textContent = "Erreur de connexion.";
+      say(error.message, true);
+    }
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
+
