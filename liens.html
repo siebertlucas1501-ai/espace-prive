@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Liens partagés - Espace privé</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 950px;
+      margin: 30px auto;
+      padding: 16px;
+      background: #f4f6fa;
+      color: #182033;
+    }
+    h1 { margin-bottom: 8px; }
+    .card {
+      background: white;
+      padding: 20px;
+      margin: 18px 0;
+      border-radius: 14px;
+      box-shadow: 0 3px 14px #0000000c;
+    }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #ccd2dd;
+      border-radius: 8px;
+      font: inherit;
+    }
+    button, .open-link {
+      display: inline-block;
+      padding: 11px 15px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #2457d6;
+      color: white;
+      font-weight: bold;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: wait; }
+    .link-card {
+      border: 1px solid #e1e5ed;
+      padding: 16px;
+      border-radius: 10px;
+      margin-top: 12px;
+      background: #fff;
+      overflow-wrap: anywhere;
+    }
+    .muted { color: #667085; font-size: .92rem; }
+    #status { padding: 12px; background: #e9edf5; border-radius: 8px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>🔗 Liens partagés</h1>
+  <p class="muted">Retrouve les diaporamas, documents et autres ressources en ligne.</p>
+
+  <div id="status">Vérification de la connexion…</div>
+
+  <section id="app" class="hidden">
+    <div class="card">
+      <h2>Ajouter un lien</h2>
+      <form id="linkForm">
+        <label for="title">Titre</label>
+        <input id="title" maxlength="120" required
+               placeholder="Ex. : Diaporama de technologie">
+
+        <label for="url">Adresse du lien</label>
+        <input id="url" type="url" maxlength="2048" required
+               placeholder="https://...">
+
+        <label for="description">Description (facultatif)</label>
+        <textarea id="description" rows="3" maxlength="500"
+                  placeholder="Quelques informations sur ce lien"></textarea>
+
+        <button id="saveButton" type="submit">Enregistrer le lien</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Liens disponibles</h2>
+      <div id="links">Chargement des liens…</div>
+    </div>
+  </section>
+
+<script>
+const SUPABASE_URL = "https://fzbbyokmekokezllvjxh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_waUuAnVTwWR5fCc6g30bPw_iC5b7uBE";
+
+const statusBox = document.getElementById("status");
+const app = document.getElementById("app");
+const linksBox = document.getElementById("links");
+const form = document.getElementById("linkForm");
+const saveButton = document.getElementById("saveButton");
+
+let supabase;
+let currentUser;
+
+function showStatus(message) {
+  statusBox.textContent = message;
+}
+
+function safeHttpUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:"
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function init() {
+  const token = sessionStorage.getItem("access_token");
+
+  if (!token) {
+    showStatus("Connecte-toi d'abord à ton espace privé, puis ouvre cette page.");
+    return;
+  }
+
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    accessToken: async () => sessionStorage.getItem("access_token")
+  });
+
+  const { data, error } = await supabase.auth.getUser(token);
+
+  if (error || !data.user) {
+    showStatus("Ta connexion a expiré. Reconnecte-toi à l'espace privé.");
+    return;
+  }
+
+  currentUser = data.user;
+  app.classList.remove("hidden");
+  showStatus("Connecté. Tu peux ajouter et consulter les liens.");
+  await loadLinks();
+}
+
+async function loadLinks() {
+  linksBox.textContent = "Chargement…";
+
+  const { data, error } = await supabase
+    .from("shared_links")
+    .select("id, title, url, description, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    linksBox.textContent = "Impossible de charger les liens : " + error.message;
+    return;
+  }
+
+  linksBox.replaceChildren();
+
+  if (!data || data.length === 0) {
+    linksBox.textContent = "Aucun lien pour le moment.";
+    return;
+  }
+
+  for (const item of data) {
+    const safeUrl = safeHttpUrl(item.url);
+    if (!safeUrl) continue;
+
+    const card = document.createElement("article");
+    card.className = "link-card";
+
+    const heading = document.createElement("h3");
+    heading.textContent = item.title;
+
+    const description = document.createElement("p");
+    description.textContent = item.description || "Aucune description.";
+
+    const anchor = document.createElement("a");
+    anchor.className = "open-link";
+    anchor.href = safeUrl;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.textContent = "Ouvrir le lien ↗";
+
+    const date = document.createElement("p");
+    date.className = "muted";
+    date.textContent = "Ajouté le " +
+      new Date(item.created_at).toLocaleDateString("fr-FR");
+
+    card.append(heading, description, anchor, date);
+    linksBox.append(card);
+  }
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentUser) {
+    showStatus("Connecte-toi pour ajouter un lien.");
+    return;
+  }
+
+  const title = document.getElementById("title").value.trim();
+  const rawUrl = document.getElementById("url").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const url = safeHttpUrl(rawUrl);
+
+  if (!title || !url) {
+    showStatus("Vérifie le titre et l'adresse du lien (http:// ou https://).");
+    return;
+  }
+
+  saveButton.disabled = true;
+  showStatus("Enregistrement du lien…");
+
+  const { error } = await supabase.from("shared_links").insert({
+    title,
+    url,
+    description,
+    created_by: currentUser.id
+  });
+
+  saveButton.disabled = false;
+
+  if (error) {
+    showStatus("Erreur lors de l'enregistrement : " + error.message);
+    return;
+  }
+
+  form.reset();
+  showStatus("Lien enregistré !");
+  await loadLinks();
+});
+
+init();
+</script>
+</body>
+</html>
